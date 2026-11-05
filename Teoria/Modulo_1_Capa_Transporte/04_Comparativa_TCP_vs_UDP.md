@@ -1,84 +1,89 @@
 # Módulo 1: Capa de Transporte
-## Tema 1.4: Comparativa Exhaustiva TCP vs. UDP y Banco de Preguntas
+## Tema 1.4: Análisis Comparativo Avanzado y Banco Maestro de Examen
 
 ---
 
-### 1. Gran Matriz Comparativa (Directa para Examen)
+### 1. Gran Matriz de Ingeniería: TCP vs. UDP
 
-| Característica / Parámetro | TCP (RFC 793) | UDP (RFC 768) |
+| Dimensión Técnica | TCP (RFC 793) | UDP (RFC 768) |
 | :--- | :--- | :--- |
-| **Tipo de Conexión** | Orientado a conexión *(Connection-oriented)* | No orientado a conexión *(Connectionless)* |
-| **Establecimiento de Sesión** | Sí, mediante **Three-Way Handshake** (SYN, SYN-ACK, ACK) | No hay negociación previa |
-| **Confiabilidad** | **Confiable:** Garantiza la entrega mediante ACKs y retransmisión | **No confiable:** Mejor esfuerzo (*Best-effort*), sin retransmisión |
-| **Orden de Entrega** | **Garantizado:** Usa números de secuencia para reordenar | **No garantizado:** Llegan en el orden en que la red los entregue |
-| **Tamaño de Encabezado** | **20 a 60 bytes** (según opciones) | **8 bytes** (fijo) |
-| **Sobrecarga (Overhead)** | Alta (cabecera grande y seguimiento de estados) | Mínima (muy ligero) |
-| **Control de Flujo** | Sí, mediante **Ventana Deslizante (Window Size)** | No implementa |
-| **Control de Congestión** | Sí (algoritmos AIMD, Slow Start, Congestion Avoidance) | No implementa |
-| **Tipos de Comunicación** | Únicamente **Unicast** (punto a punto) | **Unicast, Multicast y Broadcast** |
-| **Velocidad / Latencia** | Menor velocidad, mayor latencia por control | Máxima velocidad, mínima latencia |
-| **PDU (Protocol Data Unit)** | **Segmento** | **Datagrama** |
+| **Paradigma de Conexión** | Conexión con estado bidireccional (*Stateful*) | Sin estado (*Stateless* / Fire-and-forget) |
+| **Estructura de Memoria en el Kernel** | Requiere un **TCB (Transmission Control Block)** por socket (~1 KB a 4 KB de RAM para búferes, temporizadores y variables de estado) | Sin TCB ni búferes de retransmisión. Huella en RAM prácticamente nula |
+| **Impacto en Routers NAT / Firewalls** | Mantiene entradas en la tabla `conntrack` durante horas mientras la sesión esté `ESTABLISHED` | Las entradas NAT expiran agresivamente a los 30 a 120 segundos de inactividad |
+| **Tamaño de Cabecera y Sobrecarga** | **20 a 60 bytes** (mínimo 160 bits) | **8 bytes** fijos (64 bits) |
+| **Control de Flujo** | Dinámico por el receptor (*Window Size*) | Inexistente (la app debe tolerar desbordamiento) |
+| **Control de Congestión de Red** | Algoritmos AIMD (*Slow Start*, Reno, Cubic, BBR) | Inexistente (inyecta al medio a la tasa del emisor) |
+| **Primitiva de Entrega** | Flujo continuo de bytes (*Byte Stream*) sin fronteras de mensajes | Datagramas independientes con delimitación estricta de mensajes (*Preserves Message Boundaries*) |
+| **Soporte de Topologías de Envío** | Únicamente **Unicast** (1 a 1) | **Unicast, Multicast y Broadcast** |
 
 ---
 
-### 2. Mapeo de Protocolos de Aplicación por Tipo de Transporte
+### 2. Análisis Matemático de Eficiencia y Sobrecarga de Protocolo (Overhead)
 
-| Protocolo de Aplicación | Puerto Estándar | Transporte Utilizado | ¿Por qué usa este protocolo de transporte? |
-| :--- | :--- | :--- | :--- |
-| **HTTP / HTTPS** | 80 / 443 | **TCP** | Una página web o imagen no tolera pérdida de código HTML o scripts. |
-| **SSH / Telnet** | 22 / 23 | **TCP** | Las sesiones de comandos requieren que cada tecla digitada llegue íntegra. |
-| **FTP** | 20 (Datos) / 21 (Control) | **TCP** | La descarga de un archivo binario/software se corrompería si faltan bytes. |
-| **SMTP / POP3 / IMAP** | 25 / 110 / 143 | **TCP** | El correo electrónico no debe perder texto ni adjuntos. |
-| **DNS (Consultas estándar)** | 53 | **UDP** | Rápido, un solo paquete de pregunta y uno de respuesta (< 512 bytes). |
-| **DNS (Transferencia de zona)**| 53 | **TCP** | La sincronización completa entre servidores DNS supera 512 bytes y debe ser exacta. |
-| **DHCP** | 67 (Servidor) / 68 (Cliente) | **UDP** | El cliente aún no tiene IP configurada para negociar un handshake TCP. |
-| **TFTP** | 69 | **UDP** | Transferencia ligera en redes locales de switches/routers con memoria reducida. |
-| **NTP** | 123 | **UDP** | La sincronización de hora requiere mínima latencia sin retrasos de ACKs. |
-| **VoIP / Streaming (RTP)** | Dinámico / 5060 (SIP) | **UDP** | Prioriza la continuidad en tiempo real sobre la retransmisión de pérdidas. |
+La eficiencia de transmisión ($\eta$) se define como el porcentaje de bytes de datos útiles de aplicación transportados respecto al tamaño total de la trama Ethernet:
 
----
+$$\eta = \frac{\text{Bytes de Datos de Aplicación}}{\text{Bytes Totales en el Cable}} \times 100\%$$
 
-### 3. Banco de Preguntas de Práctica Teórica (Estilo Parcial UMG)
+#### Caso 1: Descarga Masiva de Archivo (Carga Máxima, MTU = 1500 B)
+* Encabezado Ethernet (Capa 2) = 14 bytes + 4 bytes FCS = 18 bytes.
+* Encabezado IPv4 (Capa 3) = 20 bytes.
+* Carga de Capa 4:
+  * **En TCP:** Encabezado = 20 bytes $\rightarrow$ Carga útil de aplicación = $1500 - 20 - 20 = \mathbf{1460\text{ bytes}}$.
+    $$\eta_{\text{TCP}} = \frac{1460}{1460 + 20 + 20 + 18} = \frac{1460}{1518} = \mathbf{96.18\% \text{ de eficiencia}}$$
+  * **En UDP:** Encabezado = 8 bytes $\rightarrow$ Carga útil de aplicación = $1500 - 20 - 8 = \mathbf{1472\text{ bytes}}$.
+    $$\eta_{\text{UDP}} = \frac{1472}{1472 + 8 + 20 + 18} = \frac{1472}{1518} = \mathbf{96.97\% \text{ de eficiencia}}$$
 
-**1. ¿Qué campo del encabezado TCP evita que el emisor sature la memoria intermedia del receptor?**
-- A) Sequence Number
-- B) Checksum
-- C) Window Size
-- D) Urgent Pointer
-> **Respuesta correcta:** **C) Window Size**. El receptor informa en este campo cuántos bytes está dispuesto a recibir antes de que el emisor deba detenerse a esperar un ACK.
+#### Caso 2: Telefonía IP VoIP (Códec G.711, Paquetes Pequeños de 20 ms de Voz = 160 Bytes)
+En aplicaciones interactivas, los paquetes son diminutos, lo que castiga brutalmente la eficiencia:
+* Carga útil de voz = 160 bytes.
+* **Sobrecarga de Cabeceras en UDP:**
+  $$\text{Total} = 160\text{ (voz)} + 12\text{ (RTP)} + 8\text{ (UDP)} + 20\text{ (IP)} + 18\text{ (Ethernet)} = 218\text{ bytes}$$
+  $$\eta_{\text{VoIP}} = \frac{160}{218} \times 100\% = \mathbf{73.39\%}$$
+* *Si usáramos TCP para esa llamada:* La sobrecarga agregaría números de secuencia, acuses de recibo constantes y retransmisiones, duplicando el consumo de ancho de banda y arruinando la conversación con ecos de retardo.
 
 ---
 
-**2. ¿Cuál es el tamaño de la cabecera UDP comparado con la cabecera base de TCP?**
-- A) UDP tiene 20 bytes y TCP tiene 8 bytes.
-- B) UDP tiene 8 bytes y TCP tiene 20 bytes.
-- C) Ambos miden 16 bytes.
-- D) UDP mide 4 bytes y TCP mide 32 bytes.
-> **Respuesta correcta:** **B) UDP tiene 8 bytes y TCP tiene 20 bytes**.
+### 3. Banco de Problemas Resueltos de Ingeniería (Nivel Examen UMG)
+
+#### Problema 1: Cálculo Numérico de Secuencia y Reconocimiento
+**Enunciado:**  
+El Host A inicia una conexión TCP con el Host B. Durante el Three-Way Handshake, el Host A elige un ISN de `10,000` y el Host B elige un ISN de `20,000`. Tras establecerse la conexión, el Host A envía dos segmentos consecutivos con datos de usuario:
+- El primer segmento contiene **400 bytes** de datos.
+- El segundo segmento contiene **600 bytes** de datos.
+Determina los valores exactos de `Seq` y `Ack` en:
+1. El segmento SYN del Host A.
+2. El segmento SYN-ACK del Host B.
+3. El primer segmento de datos del Host A.
+4. El acuse de recibo del Host B tras recibir el primer segmento.
+5. El segundo segmento de datos del Host A.
+6. El acuse de recibo final del Host B tras recibir ambos segmentos.
+
+**Solución Paso a Paso:**
+1. **SYN (Host A $\rightarrow$ Host B):**  
+   `Seq = 10,000`, `Ack = 0` (el flag SYN consume 1 número de secuencia virtual).
+2. **SYN-ACK (Host B $\rightarrow$ Host A):**  
+   `Seq = 20,000`, `Ack = 10,001` (reconoce el SYN recibido: $10,000 + 1$).
+3. **Primer Segmento de Datos (Host A $\rightarrow$ Host B):**  
+   `Seq = 10,001` (inicia en el siguiente byte), transporta 400 bytes (bytes 10,001 al 10,400).
+4. **ACK del Host B al primer segmento:**  
+   `Ack = 10,401` (espera el byte $10,001 + 400$).
+5. **Segundo Segmento de Datos (Host A $\rightarrow$ Host B):**  
+   `Seq = 10,401`, transporta 600 bytes (bytes 10,401 al 11,000).
+6. **ACK final del Host B:**  
+   `Ack = 11,001` (espera el byte $10,401 + 600$).
 
 ---
 
-**3. Durante el saludo de tres vías (Three-Way Handshake), ¿qué mensaje envía el servidor en respuesta al primer SYN del cliente?**
-- A) ACK únicamente.
-- B) FIN-ACK.
-- C) SYN-ACK.
-- D) RST.
-> **Respuesta correcta:** **C) SYN-ACK**. El servidor responde con su propio SYN para sincronizar su número de secuencia y con un ACK confirmando el SYN del cliente.
+#### Problema 2: Cálculo de BDP y Saturación de Enlace
+**Enunciado:**  
+Un enlace dedicado de fibra óptica entre el Campus Central y la sede de Portales de la UMG tiene un ancho de banda de **100 Mbps** y una latencia RTT de **40 ms**.  
+a) Calcula el BDP en bits y en bytes.  
+b) Si el emisor tiene una ventana TCP fija de 64 KB ($65,535\text{ bytes}$), ¿qué tasa máxima de transferencia real podrá alcanzar sobre ese enlace?
 
----
-
-**4. ¿Por qué una transmisión de voz sobre IP (VoIP) utiliza UDP en lugar de TCP?**
-- A) Porque TCP no permite cifrar el audio.
-- B) Porque UDP retransmite los paquetes más rápido.
-- C) Porque el retardo generado por las retransmisiones de TCP hace inútil el audio en tiempo real.
-- D) Porque UDP solo funciona en redes de fibra óptica.
-> **Respuesta correcta:** **C**. En aplicaciones de tiempo real, si un paquete de audio se pierde, no tiene sentido retransmitirlo 300 ms después, ya que generaría ecos, saltos o desfase en la conversación.
-
----
-
-**5. ¿Qué combinación forma un socket en una arquitectura de red?**
-- A) Dirección MAC + Dirección IP.
-- B) Dirección IP + Número de Puerto.
-- C) Número de Puerto + Subred.
-- D) Nombre de Dominio + Dirección MAC.
-> **Respuesta correcta:** **B) Dirección IP + Número de Puerto** (ejemplo: `192.168.10.1:443`).
+**Solución Paso a Paso:**
+* **a) Cálculo del BDP:**
+  $$BDP = 100,000,000\text{ bps} \times 0.040\text{ s} = 4,000,000\text{ bits}$$
+  $$BDP = \frac{4,000,000}{8} = \mathbf{500,000 \text{ bytes}} \approx \mathbf{500 \text{ KB}}$$
+* **b) Tasa de transferencia máxima limitada por la ventana:**
+  $$\text{Throughput Máximo} \le \frac{\text{Window Size}}{RTT} = \frac{65,535 \times 8 \text{ bits}}{0.040\text{ s}} = \frac{524,280\text{ bits}}{0.040\text{ s}} = \mathbf{13.1\text{ Mbps}}$$
+* *Conclusión:* A pesar de haber contratado un enlace de 100 Mbps, la conexión TCP estándar **solo alcanzará 13.1 Mbps** debido a que la ventana de 64 KB es insuficiente para llenar el "tubo" del BDP (500 KB). Para alcanzar los 100 Mbps completos, es obligatorio habilitar la opción de escala de ventana (*TCP Window Scale*).

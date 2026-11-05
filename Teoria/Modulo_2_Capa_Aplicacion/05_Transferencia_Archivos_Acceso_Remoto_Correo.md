@@ -1,88 +1,76 @@
 # Módulo 2: Capa de Aplicación
-## Tema 2.5: Transferencia de Archivos, Acceso Remoto y Correo Electrónico
+## Tema 2.5: Servicios Críticos de Infraestructura (FTP, SSH y Correo con SPF/DKIM/DMARC)
 
 ---
 
-### 1. Protocolos de Transferencia de Archivos: FTP vs. TFTP
+### 1. El Dilema de FTP a través de Firewalls y NAT (Modo Activo vs. Pasivo)
 
-| Característica | FTP (File Transfer Protocol - RFC 959) | TFTP (Trivial File Transfer Protocol - RFC 1350) |
-| :--- | :--- | :--- |
-| **Protocolo Capa 4** | **TCP** (Orientado a conexión, confiable) | **UDP** (No orientado a conexión, no confiable) |
-| **Puertos Utilizados** | **Puerto 21 (Control) y Puerto 20 (Datos)** | **Puerto 69** |
-| **Autenticación** | Requiere usuario y contraseña (o anónimo) | Sin autenticación |
-| **Estructura y Comandos**| Complejo (permite listar directorios, renombrar, permisos) | Muy simple (solo permite `Read` y `Write` directo) |
-| **Uso Principal** | Transferencia de archivos entre servidores y usuarios | Respaldo o carga de imágenes IOS y configuraciones en routers/switches Cisco |
+FTP es uno de los protocolos más antiguos de Internet (RFC 959). Su diseño de doble canal genera serios conflictos con los firewalls modernos si no se comprende su arquitectura:
 
-#### Funcionamiento de los Dos Canales de FTP:
-FTP es peculiar porque utiliza **dos conexiones TCP simultáneas**:
-* **Conexión de Control (Puerto 21 TCP):** Se mantiene abierta durante toda la sesión para enviar comandos de texto (`USER`, `PASS`, `LIST`, `QUIT`) y recibir respuestas del servidor.
-* **Conexión de Datos (Puerto 20 TCP en modo activo):** Se abre y cierra dinámicamente cada vez que se transfiere un archivo o se lista un directorio.
-  * *Modo Activo:* El cliente abre un puerto y el servidor inicia la conexión de datos desde su puerto 20 hacia el cliente (frecuentemente bloqueado por firewalls de clientes).
-  * *Modo Pasivo (PASV):* El cliente solicita al servidor que abra un puerto aleatorio de datos, y es el cliente quien inicia la conexión hacia el servidor (amigable con firewalls).
+#### A. Modo Activo (Active FTP)
+1. El cliente se conecta desde un puerto dinámico `N` hacia el **puerto 21 TCP del servidor** (Canal de Control) y envía el comando:  
+   `PORT IP_Cliente, Puerto_Datos_M` (donde $M = N+1$).
+2. Para transmitir los datos, **el servidor inicia una conexión TCP inversa desde su puerto 20 TCP hacia el puerto M del cliente**.
+* **Falla clásica en examen:** Si el cliente está detrás de un router doméstico o firewall con NAT (como casi todos hoy en día), **el firewall del cliente bloquea la conexión entrante del servidor en el puerto M**, considerándola un ataque no solicitado. El comando `LIST` o la descarga se congela indefinidamente.
 
----
-
-### 2. Acceso Remoto por Terminal: Telnet vs. SSH
-
-| Parámetro | Telnet (Telecommunications Network - RFC 854) | SSH (Secure Shell - RFC 4251) |
-| :--- | :--- | :--- |
-| **Puerto Estándar** | **Puerto 23 TCP** | **Puerto 22 TCP** |
-| **Seguridad de Datos** | **Texto Claro (Plaintext):** Cualquier persona con Wireshark puede leer usuarios, contraseñas y comandos. | **Completamente Cifrado:** Protege la confidencialidad e integridad del tráfico de extremo a extremo. |
-| **Mecanismo Criptográfico** | Ninguno. | Cifrado asimétrico (autenticación) y simétrico (sesión). |
-| **Recomendación Cisco/UMG**| **Prohibido en producción.** Solo para laboratorios educativos iniciales. | **Estándar obligatorio** para administrar routers, switches y servidores. |
+#### B. Modo Pasivo (Passive FTP - PASV)
+1. El cliente se conecta al puerto 21 del servidor y envía el comando `PASV`.
+2. El servidor abre un puerto dinámico no privilegiado en su propio sistema (ej. `Puerto 49500`) y se lo envía al cliente.
+3. **El cliente es quien inicia la conexión de datos** hacia el puerto `49500` del servidor.
+* **Ventaja:** Como ambas conexiones (control y datos) son iniciadas hacia afuera por el cliente, los firewalls con seguimiento de estado (*Stateful Inspection*) permiten la salida sin problemas. Es el modo configurado por defecto en todos los navegadores y clientes modernos como FileZilla.
 
 ---
 
-### 3. Protocolos de Correo Electrónico (E-mail)
+### 2. Criptografía en SSH (Secure Shell - Puerto 22 TCP)
 
-El correo electrónico no utiliza un solo protocolo, sino una combinación de protocolos de **Envío (Push)** y de **Descarga/Acceso (Pull)**:
+SSH reemplazó a Telnet y a los comandos Berkeley r-services (`rlogin`, `rsh`) porque garantiza confidencialidad, integridad y autenticación mutua mediante un esquema criptográfico híbrido:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Emisor as Usuario Emisor
-    participant MTA1 as Servidor SMTP Emisor
-    participant MTA2 as Servidor SMTP Destino
-    actor Receptor as Usuario Receptor
+    actor Cliente as Administrador / Cliente SSH
+    participant Servidor as Servidor Linux / Router Cisco
     
-    Note over Emisor,MTA1: Envío de correo (Protocolo PUSH)
-    Emisor->>MTA1: SMTP (Puerto 25 / 587 TCP)
+    Note over Cliente,Servidor: 1. Negociación e Intercambio Diffie-Hellman
+    Cliente->>Servidor: TCP Handshake Puerto 22 + Intercambio de versiones
+    Servidor->>Cliente: Clave Pública del Host (Host Key)
+    Note over Cliente: Comprueba si la clave está en el archivo local ~/.ssh/known_hosts
+    Note over Cliente,Servidor: Ejecutan Diffie-Hellman para generar una CLAVE DE SESIÓN SIMÉTRICA secreta
     
-    Note over MTA1,MTA2: Retransmisión entre servidores (PUSH)
-    MTA1->>MTA2: SMTP (Puerto 25 TCP)
-    
-    Note over MTA2,Receptor: Lectura y descarga (Protocolo PULL)
-    Receptor->>MTA2: IMAP (Puerto 143) o POP3 (Puerto 110 TCP)
+    Note over Cliente,Servidor: 2. Canal Cifrado Activo (Cifrado Simétrico AES-GCM)
+    Cliente->>Servidor: Envía credenciales (Contraseña o Firma con Clave Privada ~/.ssh/id_rsa)
+    Servidor->>Cliente: Acceso concedido (Shell interactiva cifrada)
 ```
 
-#### A. Protocolo de Envío: SMTP (Simple Mail Transfer Protocol - RFC 5321)
-* **Función:** Envía correos desde el cliente hacia el servidor de correo emisor, y retransmite correos entre servidores de correo a través de Internet.
-* **Mecanismo:** Es un protocolo de tipo **Push** (empuja los datos hacia adelante).
-* **Puertos:** 
-  * Puerto **25 TCP** (comunicación histórica servidor a servidor).
-  * Puerto **587 TCP** (envío seguro cliente a servidor con autenticación STARTTLS).
-
-#### B. Protocolos de Recuperación: POP3 vs. IMAP
-
-| Característica | POP3 (Post Office Protocol v3) | IMAP (Internet Message Access Protocol) |
-| :--- | :--- | :--- |
-| **Puerto Estándar** | **Puerto 110 TCP** (o **995 con SSL/TLS**) | **Puerto 143 TCP** (o **993 con SSL/TLS**) |
-| **Filosofía de Trabajo** | **Descarga y Borra:** Descarga los correos al almacenamiento local de la computadora y los elimina del servidor. | **Sincronización en el Servidor:** Los correos y carpetas permanecen almacenados centralmente en el servidor. |
-| **Acceso multidispositivo**| Muy malo: Si lees un correo en la PC, desaparece y ya no lo ves en tu celular. | **Excelente:** Cambios, leídos, borradores y carpetas se sincronizan en tiempo real en todos tus dispositivos. |
-| **Consumo de espacio** | Libera espacio en el servidor de correo. | Requiere buzones con mayor capacidad de almacenamiento en el servidor. |
+1. **Autenticación del Servidor (`known_hosts`):** Evita ataques *Man-in-the-Middle*. Si la huella digital (*fingerprint*) del servidor cambia repentinamente, SSH emite la famosa alerta roja: `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!`.
+2. **Intercambio Diffie-Hellman:** Permite que cliente y servidor acuerden una clave secreta compartida a través de un canal inseguro sin que nadie que espíe el cable pueda deducirla.
+3. **Cifrado de Sesión:** Tras acordar la clave secreta, todo el tráfico (comandos, contraseñas, salidas de terminal) se cifra con algoritmos simétricos ultra veloces como **AES-256-GCM** o **ChaCha20-Poly1305**.
 
 ---
 
-### 4. Banco de Preguntas de Examen (Tipo UMG - Módulo 2)
+### 3. El Trío de Seguridad del Correo Electrónico (SPF, DKIM y DMARC)
 
-**1. ¿Qué puertos utiliza el protocolo FTP y para qué sirve cada uno?**
-> **R:** Utiliza el puerto **21 TCP para Control** (autenticación y envío de comandos) y el puerto **20 TCP para Datos** (transferencia real de archivos).
+El protocolo de envío de correo **SMTP (Puerto 25/587)** no tiene ningún mecanismo para verificar la identidad del emisor; cualquiera puede enviar un paquete SMTP afirmando ser `rectoria@umg.edu.gt`. Para evitar el fraude y la suplantación (*Spoofing*), se utilizan tres tecnologías combinadas en el DNS:
 
-**2. ¿Cuál es la diferencia fundamental entre Telnet y SSH?**
-> **R:** Telnet transmite toda la información (incluyendo contraseñas) en texto plano sin cifrar por el puerto 23 TCP, mientras que SSH cifra toda la sesión de terminal utilizando criptografía por el puerto 22 TCP.
+```mermaid
+graph TD
+    MTA["Servidor de Correo Remoto recibe un email<br/>From: rectoria@umg.edu.gt"] --> SPF["1. Consulta SPF en DNS<br/>¿La IP del servidor emisor está autorizada en el registro TXT?"]
+    MTA --> DKIM["2. Consulta DKIM en DNS<br/>¿La firma criptográfica del encabezado coincide con la clave pública en el DNS?"]
+    SPF --> DMARC["3. Política DMARC en DNS<br/>Si falla SPF o DKIM, ¿qué hago con el correo?<br/>(p=none, p=quarantine o p=reject)"]
+    DKIM --> DMARC
+    DMARC --> Delivery["Decisión Final:<br/>Bandeja de Entrada, Carpeta Spam o Rechazo Total"]
+```
 
-**3. Si un usuario desea leer sus correos desde su laptop de oficina, su teléfono y su tablet manteniendo sincronizadas sus carpetas y correos leídos, ¿qué protocolo de recuperación debe configurar?**
-> **R:** Debe configurar **IMAP** (puerto 143 / 993 TCP), ya que mantiene el estado y los correos centralizados en el servidor, a diferencia de POP3 que descarga y borra localmente.
-
-**4. ¿Por qué el protocolo TFTP es utilizado para respaldar el sistema operativo Cisco IOS en lugar de FTP o HTTP?**
-> **R:** Porque TFTP utiliza UDP (puerto 69), es extremadamente simple, no requiere autenticación y requiere una huella de memoria mínima en la memoria ROM o flash del dispositivo de red.
+1. **SPF (Sender Policy Framework - Registro TXT en DNS):**  
+   El dueño del dominio publica una lista de las únicas direcciones IP autorizadas para enviar correos en su nombre:
+   ```text
+   umg.edu.gt.  IN  TXT  "v=spf1 ip4:200.10.15.25 include:_spf.google.com -all"
+   ```
+   *(El `-all` indica que cualquier servidor que no esté en esa lista debe ser rechazado).*
+2. **DKIM (DomainKeys Identified Mail - Criptografía Asimétrica):**  
+   El servidor emisor firma digitalmente el cuerpo del correo con su clave privada y añade el encabezado `DKIM-Signature`. El servidor receptor busca la clave pública correspondiente en el registro DNS del emisor y valida que el correo no fue alterado en tránsito.
+3. **DMARC (Domain-based Message Authentication, Reporting, and Conformance):**  
+   Le dice al servidor de destino qué política aplicar si fallan SPF o DKIM:
+   * `p=none`: Solo monitorear y generar reportes.
+   * `p=quarantine`: Enviar el correo sospechoso a la carpeta de Spam / Correo no deseado.
+   * `p=reject`: Rechazar y destruir el correo inmediatamente a nivel de servidor SMTP.

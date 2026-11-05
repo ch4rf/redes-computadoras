@@ -1,86 +1,61 @@
 # Módulo 2: Capa de Aplicación
-## Tema 2.4: Servicios Web (HTTP y HTTPS)
+## Tema 2.4: Evolución de Protocolos Web (HTTP/1.1, HTTP/2, HTTP/3 y Cifrado TLS 1.3)
 
 ---
 
-### 1. HTTP vs. HTTPS: Comparativa Básica
+### 1. La Evolución Histórica de la Web: Del Texto Plano al Transporte Binario
 
-| Parámetro | HTTP (HyperText Transfer Protocol) | HTTPS (HTTP Secure) |
-| :--- | :--- | :--- |
-| **Definición** | Protocolo sin cifrado para transferir hipertexto (páginas web, imágenes, APIs). | HTTP encapsulado dentro de una capa de transporte segura (TLS/SSL). |
-| **Puerto Estándar** | **Puerto 80 TCP** | **Puerto 443 TCP** |
-| **Seguridad / Cifrado** | En texto claro (*plaintext*). Vulnerable a ataques *Man-in-the-Middle* (sniffing de contraseñas). | Totalmente cifrado de extremo a extremo con TLS. Confidencialidad e integridad garantizadas. |
-| **Autenticación** | Ninguna identidad verificada. | Utiliza **Certificados Digitales X.509** emitidos por Autoridades Certificadoras (CA). |
-| **Rendimiento** | Ligeramente más rápido (sin sobrecarga criptográfica). | Muy ligera sobrecarga inicial durante la negociación TLS. |
-
----
-
-### 2. Estructura de los Mensajes HTTP (Request y Response)
-
-HTTP opera mediante un modelo de Solicitud-Respuesta sin estado (*Stateless*). Cada transacción consta de:
-
-#### A. Mensaje de Petición (HTTP Request)
-1. **Línea de Petición (Request Line):** Contiene el método, el recurso URI y la versión del protocolo.  
-   *Ejemplo:* `GET /index.html HTTP/1.1`
-2. **Cabeceras de Petición (Headers):** Información adicional del cliente.  
-   *Ejemplos:* `Host: www.umg.edu.gt`, `User-Agent: Mozilla/5.0...`, `Accept: text/html`.
-3. **Línea en blanco (CRLF):** Separa las cabeceras del cuerpo.
-4. **Cuerpo del Mensaje (Body):** Opcional (usado en peticiones POST o PUT para enviar formularios o archivos JSON).
-
-#### B. Mensaje de Respuesta (HTTP Response)
-1. **Línea de Estado (Status Line):** Versión del protocolo, código de estado numérico y texto explicativo.  
-   *Ejemplo:* `HTTP/1.1 200 OK`
-2. **Cabeceras de Respuesta (Headers):** Información del servidor.  
-   *Ejemplos:* `Content-Type: text/html; charset=UTF-8`, `Content-Length: 1024`, `Server: Apache`.
-3. **Línea en blanco (CRLF):**
-4. **Cuerpo de Respuesta (Body):** El código HTML, CSS, JavaScript o imagen binaria que el navegador renderiza en pantalla.
+| Parámetro | HTTP/1.0 (1996) | HTTP/1.1 (1997 - RFC 2616/7230) | HTTP/2 (2015 - RFC 7540) | HTTP/3 (2022 - RFC 9114) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Transporte Capa 4** | TCP | TCP | TCP | **QUIC sobre UDP** |
+| **Manejo de Conexiones** | 1 conexión TCP por cada objeto individual (Cierre inmediato tras recibir) | **Persistent Connections (`Keep-Alive`)** y *Pipelining* teórico | **1 sola conexión TCP multiplexada** para todos los recursos del dominio | Conexión UDP única independiente de cambios de IP/red |
+| **Formato de Mensaje** | Texto plano legible | Texto plano legible | **Binario estructurado (Frames)** | **Binario estructurado (Frames QPACK)** |
+| **Compresión de Cabeceras**| Ninguna | Ninguna | **HPACK** (Diccionario dinámico de cabeceras) | **QPACK** (Adaptado para evitar bloqueos en UDP) |
+| **Bloqueo Head-of-Line**| Crítico | **Presente en Capa de Aplicación** (peticiones en fila FIFO) | Resuelto en Capa de Aplicación, pero **presente en Capa de Transporte TCP** | **Completamente Eliminado** en todas las capas |
 
 ---
 
-### 3. Métodos HTTP Principales (Verbos de Petición)
+### 2. El Problema del Bloqueo Head-of-Line (HoL Blocking) y cómo se resolvió
 
-| Método | Propósito Principal | ¿Envía datos en URL o en Cuerpo? | Idempotente* |
-| :--- | :--- | :--- | :--- |
-| **GET** | Solicita y recupera un recurso del servidor sin modificar nada. | Datos en la URL (Query String: `?id=5`). | Sí |
-| **POST** | Envía datos al servidor para crear un recurso nuevo o procesar un formulario (ej. login). | Datos en el Cuerpo (*Body*) de la petición. | No |
-| **PUT** | Reemplaza o actualiza completamente un recurso existente en el servidor. | Datos en el Cuerpo. | Sí |
-| **DELETE** | Elimina un recurso específico identificado por la URL. | No suele llevar cuerpo. | Sí |
-| **HEAD** | Idéntico a GET, pero el servidor devuelve **únicamente las cabeceras**, sin el cuerpo HTML (ideal para verificar si un archivo cambió). | Sin cuerpo. | Sí |
+Este es el concepto arquitectónico más preguntado en cursos avanzados de redes:
 
-*\*Idempotente: Ejecutar la misma petición múltiples veces consecutivas produce exactamente el mismo resultado en el servidor.*
+#### A. En HTTP/1.1 (Bloqueo en Capa de Aplicación):
+* Aunque `Keep-Alive` permitía reutilizar el socket TCP sin cerrarlo, las peticiones debían responderse en estricto orden secuencial (**FIFO**).
+* Si una página web solicita un archivo HTML, un script pesado `script.js` y 10 imágenes, y el procesamiento del `script.js` tarda 2 segundos en el servidor, **las 10 imágenes quedan totalmente congeladas en cola** esperando que termine el script.
+* *Solución improvisada de los navegadores:* Abrir hasta 6 conexiones TCP simultáneas en paralelo por dominio, lo que multiplicaba el consumo de memoria en los servidores.
+
+#### B. En HTTP/2 (Multiplexación Binaria sobre 1 Conexión TCP):
+* Divide los mensajes en fragmentos binarios llamados **Frames** (marcardos con un *Stream ID*).
+* Permite intercalar imágenes, CSS y scripts sobre el mismo socket TCP sin esperar a que termine el anterior.
+* **El nuevo problema (HoL en Capa de Transporte):** Si en la red intermedia de Internet se pierde un solo paquete TCP (un fragmento de una imagen), **el stack TCP del kernel congela todo el búfer de recepción** para retransmitir ese fragmento perdido, frenando a todos los demás *streams* independientes.
+
+#### C. En HTTP/3 (QUIC sobre UDP):
+* Al abandonar TCP y correr sobre datagramas UDP, cada *stream* es completamente independiente a nivel de transporte. Si se pierde un paquete del *stream* de la imagen, el navegador sigue reproduciendo el audio y renderizando el texto sin ningún retraso.
 
 ---
 
-### 4. Códigos de Estado HTTP (Categorías Obligatorias de Examen)
+### 3. Cifrado TLS: Comparativa del Handshake TLS 1.2 vs. TLS 1.3
 
-Los códigos de estado son números de 3 dígitos divididos en 5 clases:
+HTTPS utiliza **TLS (Transport Layer Security)**. La versión **TLS 1.3 (RFC 8446)** revolucionó la seguridad al eliminar algoritmos criptográficos débiles y reducir a la mitad la latencia de conexión:
 
-```text
-1xx: Informativos (Poco comunes en examen)
-2xx: Éxito (Success)
-3xx: Redirección (Redirection)
-4xx: Error del Cliente (Client Error)
-5xx: Error del Servidor (Server Error)
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cliente as Navegador Cliente
+    participant Servidor as Servidor Web Seguro
+    
+    Note over Cliente,Servidor: TLS 1.2: Requiere 2 RTTs de negociación criptográfica
+    Cliente->>Servidor: ClientHello (Lista de Cipher Suites soportados)
+    Servidor->>Cliente: ServerHello + Certificado Digital + ServerKeyExchange
+    Cliente->>Servidor: ClientKeyExchange + [ChangeCipherSpec] + Finished
+    Servidor->>Cliente: [ChangeCipherSpec] + Finished (Listo para enviar datos)
+    
+    Note over Cliente,Servidor: TLS 1.3: Requiere solo 1 RTT (o 0-RTT en reconexión)
+    Cliente->>Servidor: ClientHello + Propuesta de Claves Diffie-Hellman (Adivina el cifrado)
+    Servidor->>Cliente: ServerHello + Certificado + Finished + Su parte de Diffie-Hellman
+    Note over Cliente,Servidor: Cifrado activo inmediatamente. El cliente ya envía el HTTP GET
 ```
 
-#### Los Códigos más Evaluados:
-* **`200 OK`:** La solicitud se completó con éxito y el servidor entrega los datos solicitados.
-* **`201 Created`:** La solicitud tuvo éxito y se ha creado un nuevo recurso (común en APIs REST con POST).
-* **`301 Moved Permanently`:** El recurso cambió de dirección de forma permanente (el navegador redirige automáticamente a la nueva URL).
-* **`302 Found / Moved Temporarily`:** Redirección temporal.
-* **`304 Not Modified`:** El recurso no ha cambiado desde la última visita; el navegador puede usar su copia en memoria caché (ahorro de ancho de banda).
-* **`400 Bad Request`:** La sintaxis de la petición del cliente es inválida o incomprensible para el servidor.
-* **`401 Unauthorized`:** Se requiere autenticación previa (usuario y contraseña) para acceder.
-* **`403 Forbidden`:** El servidor entiende quién es el cliente, pero este **no tiene permisos** para ver el recurso.
-* **`404 Not Found`:** El recurso o página solicitada no existe en la ruta indicada del servidor.
-* **`500 Internal Server Error`:** El servidor web falló internamente (error de código PHP, caída de base de datos, etc.).
-* **`502 Bad Gateway`:** Un servidor proxy inverso o puerta de enlace recibió una respuesta inválida del servidor interno.
-* **`503 Service Unavailable`:** El servidor está sobrecargado temporalmente o en mantenimiento.
-
----
-
-### 5. ¿Cómo funciona HTTPS y el Cifrado TLS?
-
-HTTPS utiliza **TLS (Transport Layer Security)**, sucesor moderno de SSL:
-1. **Cifrado Asimétrico (Clave Pública y Privada):** Utilizado durante la fase inicial (*TLS Handshake*) para autenticar al servidor mediante su certificado digital y acordar de forma segura una clave secreta compartida.
-2. **Cifrado Simétrico (Clave de Sesión única):** Una vez acordada la clave secreta, toda la transmisión masiva de páginas y datos web utiliza cifrado simétrico (como AES), debido a que es exponencialmente más rápido que el asimétrico.
+* **TLS 1.2:** Demoraba **2 RTT completos** solo para acordar la clave de cifrado (sumados al 1 RTT previo del Three-Way Handshake TCP, totalizaba **3 RTTs** antes de enviar el primer byte útil).
+* **TLS 1.3:** Reduce la negociación a **1 solo RTT** al enviar las propuestas criptográficas (*Key Share*) en el mismo primer mensaje `ClientHello`.
+* **0-RTT Resumption (Early Data):** Si el cliente ya había visitado el sitio web previamente, puede enviar datos de aplicación cifrados en el mismísimo primer paquete de la conexión, logrando carga instantánea.

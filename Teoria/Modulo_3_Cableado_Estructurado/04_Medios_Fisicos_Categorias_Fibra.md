@@ -1,79 +1,73 @@
 # Módulo 3: Cableado Estructurado
-## Tema 3.4: Medios Físicos de Transmisión (Par Trenzado y Fibra Óptica)
+## Tema 3.4: Medios Físicos, Código de 12 Colores de Fibra (TIA-598-C) y Balance Óptico
 
 ---
 
-### 1. Cables de Par Trenzado de Cobre (Twisted Pair)
-El par trenzado de cobre es el medio universal para redes LAN. El trenzado helicoidal de los pares cancela el ruido electromagnético externo y la interferencia mutua entre pares adyacentes (*crosstalk* o diafonía).
+### 1. El Código de 12 Colores para Fibra Óptica (Norma TIA-598-C)
 
-#### Tipos de Apantallamiento y Blindaje (Clasificación ISO/IEC):
-* **UTP (Unshielded Twisted Pair):** Sin ningún tipo de blindaje metálico. El más económico, flexible y fácil de instalar. Estándar en oficinas sin fuentes extremas de interferencia.
-* **F/UTP o FTP (Foiled UTP):** Cuenta con una lámina de aluminio global que envuelve a los 4 pares juntos. Reduce interferencias externas.
-* **S/FTP (Shielded Foiled Twisted Pair):** Cada par individual está envuelto en su propia lámina de aluminio y, además, los 4 pares están cubiertos por una malla metálica trenzada global. Máxima protección contra EMI (interferencia electromagnética), ideal para ambientes industriales o centros de datos de alta densidad.
+En cables de fibra óptica multifibra (ej. cables exteriores de tubo holgado o *Loose Tube* con 24, 48 o 72 hilos), los hilos de vidrio son tan delgados que no se pueden numerar con texto impreso. La norma **TIA-598-C** establece un código cromático estricto de **12 colores** que debe memorizarse de izquierda a derecha:
 
----
-
-### 2. Categorías de Rendimiento en Par Trenzado de Cobre
-
-| Categoría | Ancho de Banda Máximo (Frecuencia) | Velocidad Máxima Soportada | Distancia Máxima a Velocidad Máxima | Aplicación Típica |
-| :---: | :---: | :---: | :---: | :--- |
-| **Cat 5e** | 100 MHz | **1 Gbps** (1000BASE-T) | 100 metros | Redes antiguas o residenciales básicas. |
-| **Cat 6** | 250 MHz | **1 Gbps** (1000BASE-T)<br/>*10 Gbps (10GBASE-T)* | 100 metros a 1 Gbps<br/>*37 a 55 metros a 10 Gbps* | **Estándar comercial de diseño actual** en edificios y oficinas. |
-| **Cat 6A** *(Augmented)* | **500 MHz** | **10 Gbps** (10GBASE-T) | **100 metros a 10 Gbps** | Cableado vertical (Backbone), cuartos de servidores y centros de cómputo. |
-| **Cat 7 / 7A** | 600 / 1000 MHz | 10 Gbps | 100 metros | Redes industriales (requiere conectores especiales Tera/GG45). |
-| **Cat 8** | 2000 MHz (2 GHz) | **25 Gbps / 40 Gbps** | 30 metros | Enlaces internos entre servidores y switches en Centros de Datos. |
-
----
-
-### 3. Fibra Óptica: Monomodo (SMF) vs. Multimodo (MMF)
-
-La fibra óptica transmite pulsos de luz en lugar de señales eléctricas. Ofrece tres ventajas fundamentales:
-1. **Inmunidad absoluta** a la interferencia electromagnética (EMI) y por radiofrecuencia (RFI).
-2. **Aislamiento eléctrico total** (no transmite descargas atmosféricas ni diferencias de potencial de tierra entre edificios).
-3. **Ancho de banda masivo y distancias kilométricas**.
-
-```mermaid
-graph TD
-    subgraph Fibra Monomodo - SMF
-        F1["Núcleo ultra delgado (9 µm)<br/>Fuente: LÁSER infrarrojo (1310 / 1550 nm)<br/>Un solo haz de luz recto sin dispersión modal<br/>Distancias: 10 km hasta 80+ km<br/>Chaqueta externa: Amarilla"]
-    end
-    
-    subgraph Fibra Multimodo - MMF
-        F2["Núcleo ancho (50 o 62.5 µm)<br/>Fuente: LED o VCSEL (850 / 1300 nm)<br/>Múltiples haces de luz rebotando (dispersión modal)<br/>Distancias: 300 m a 550 m (a 10 Gbps)<br/>Chaqueta externa: Naranja (OM1/OM2) o Aqua (OM3/OM4)"]
-    end
+```text
+ 1. Azul (BL)      2. Naranja (OR)    3. Verde (GR)      4. Marrón (BR)
+ 5. Gris (SL)      6. Blanco (WH)     7. Rojo (RD)       8. Negro (BK)
+ 9. Amarillo (YL) 10. Violeta (VI)   11. Rosa (RS)      12. Aqua (AQ)
 ```
 
-#### Tabla Comparativa de Fibra Óptica para Examen:
+```mermaid
+graph LR
+    C1["1. Azul"] --> C2["2. Naranja"] --> C3["3. Verde"] --> C4["4. Marrón"]
+    C4 --> C5["5. Gris"] --> C6["6. Blanco"] --> C7["7. Rojo"] --> C8["8. Negro"]
+    C8 --> C9["9. Amarillo"] --> C10["10. Violeta"] --> C11["11. Rosa"] --> C12["12. Aqua"]
+```
 
-| Característica | Fibra Óptica Monomodo (SMF) | Fibra Óptica Multimodo (MMF) |
-| :--- | :--- | :--- |
-| **Diámetro del Núcleo (Core)** | **9 micrómetros ($\mu m$)** | **50 o 62.5 micrómetros ($\mu m$)** |
-| **Diámetro del Revestimiento (Cladding)** | **125 micrómetros** | **125 micrómetros** |
-| **Fuente de Emisión de Luz** | **Láser semiconductor (Diodo Láser)** | **LED o VCSEL (Vertical-Cavity Surface-Emitting Laser)** |
-| **Longitudes de Onda** | 1310 nm y 1550 nm | 850 nm y 1300 nm |
-| **Dispersión Modal** | Ninguna (un solo rayo viaja recto por el centro) | Presente (múltiples ángulos de entrada causan dispersión) |
-| **Distancia Máxima** | Desde **10 km hasta más de 80 km** | Típicamente **300 m a 550 m** a alta velocidad |
-| **Costo de Transceivers (SFP)** | Elevado (los láseres son costosos) | Moderado / Accesible |
-| **Color estándar de chaqueta** | **Amarillo** | **Naranja (OM1/OM2) / Aqua o Turquesa (OM3/OM4)** |
-| **Uso Típico** | Redes WAN de telecomunicaciones, enlaces inter-edificios largos en campus | **Backbone vertical entre pisos** y conexiones dentro del Centro de Datos |
+#### Identificación Bidimensional en Cables de Tubo Holgado:
+En un cable de 24 hilos que contiene 2 tubos plásticos amortiguadores con 12 fibras cada uno:
+* **Tubo 1 (Azul):** Aloja las fibras de la 1 a la 12 (utilizando los 12 colores en orden).
+* **Tubo 2 (Naranja):** Aloja las fibras de la 13 a la 24 (utilizando nuevamente los 12 colores en orden).
 
----
-
-### 4. Conectores de Fibra Óptica y Módulos SFP
-
-* **Conector LC (Lucent Connector / Little Connector):** Conector pequeño de forma cuadrada con pestillo de empuje similar a un RJ-45. **Es el estándar moderno dominante** en switches Cisco mediante módulos transceptores **SFP / SFP+** (Mini-GBIC).
-* **Conector SC (Subscriber Connector / Square Connector):** Conector cuadrado de inserción directa (*push-pull*). Muy común en bandejas de fibra (ODF) y cajas de terminación óptica de pared.
-* **Conector ST (Straight Tip):** Conector redondo con cierre de bayoneta (giro de media vuelta). Común en instalaciones antiguas con fibra OM1/OM2.
+* **Pregunta Clásica de Examen UMG:**
+  * *¿En qué tubo y de qué color es la fibra número 16?*
+    * Tubo 1 = Fibras 1 a 12 (Azul).
+    * Tubo 2 = Fibras 13 a 24 (Naranja).
+    * Fibra 16 está en el **Tubo Naranja**.
+    * Posición dentro del tubo: $16 - 12 = 4$ $\rightarrow$ El cuarto color del código es **Marrón**.
+    * **Respuesta:** **Tubo Naranja, Fibra Marrón**.
 
 ---
 
-### 5. Preguntas Clave de Examen (Tipo UMG)
+### 2. Clasificación de Fibras Multimodo (Categorías OM)
 
-**P1: ¿Cuál es el diámetro típico del núcleo de una fibra óptica monomodo frente a una multimodo?**
-> **R:** Monomodo tiene un núcleo de **9 $\mu m$**, mientras que la multimodo tiene un núcleo de **50 o 62.5 $\mu m$**. Ambas comparten el mismo revestimiento exterior de **125 $\mu m$**.
+| Estándar | Diámetro del Núcleo | Ancho de Banda Modal Mínimo | Alcance Máximo a 1 Gbps | Alcance Máximo a 10 Gbps | Color Típico de Chaqueta |
+| :---: | :---: | :---: | :---: | :---: | :---: |
+| **OM1** | 62.5 $\mu m$ | 200 MHz·km (850 nm) | 275 metros | 33 metros | **Naranja** |
+| **OM2** | 50 $\mu m$ | 500 MHz·km (850 nm) | 550 metros | 82 metros | **Naranja** |
+| **OM3** *(Optimizada para Láser)* | 50 $\mu m$ | 2,000 MHz·km (850 nm VCSEL) | 1,000 metros | **300 metros** | **Aqua / Turquesa** |
+| **OM4** *(Alta Densidad)* | 50 $\mu m$ | 4,700 MHz·km (850 nm VCSEL) | 1,100 metros | **550 metros** | **Aqua / Violeta Erika** |
+| **OM5** *(Banda Ancha WDM)*| 50 $\mu m$ | 28,000 MHz·km (SWDM) | 1,100 metros | 550 m (40G/100G) | **Verde Lima** |
 
-**P2: ¿Por qué la fibra óptica monomodo alcanza distancias muchísimo más largas que la multimodo?**
-> **R:** Porque al tener un núcleo microscópico de 9 $\mu m$, la luz láser viaja en un solo modo o haz en línea recta, **eliminando completamente la dispersión modal** que limita a la fibra multimodo.
+---
 
-**P3: ¿Qué categoría de cable de par trenzado garantiza una velocidad de 10 Gbps a los 100 metros completos de canal?**
-> **R:** La **Categoría 6A (Cat 6A)** a 500 MHz. (Cat 6 estándar solo soporta 10 Gbps hasta 37-55 metros).
+### 3. Fórmulas de Balance de Pérdidas Ópticas (Optical Power Budget)
+
+Al diseñar un enlace de fibra óptica entre edificios, un ingeniero de redes debe calcular la atenuación total esperada del enlace ($A_{\text{total}}$) para verificar que la potencia que llega al receptor ($P_{\text{rx}}$) sea superior a su sensibilidad mínima:
+
+$$A_{\text{total}} = (\alpha \times L) + (N_{\text{conectores}} \times A_{\text{conector}}) + (N_{\text{empalmes}} \times A_{\text{empalme}}) + \text{Margen}$$
+
+#### Valores Estándar de Pérdida según ANSI/TIA-568.3:
+* $\alpha$ (Atenuación del cable de fibra):
+  * Multimodo a 850 nm: $\mathbf{3.0 \text{ dB/km}}$
+  * Multimodo a 1300 nm: $\mathbf{1.0 \text{ dB/km}}$
+  * Monomodo a 1310 nm: $\mathbf{0.4 \text{ dB/km}}$
+  * Monomodo a 1550 nm: $\mathbf{0.3 \text{ dB/km}}$
+* Pérdida por cada par de conectores acoplados ($A_{\text{conector}}$): máximo **0.75 dB** (0.3 dB en conectores de precisión).
+* Pérdida por cada empalme por fusión ($A_{\text{empalme}}$): máximo **0.3 dB** (0.05 dB típico en fusionadora moderna).
+* Margen de seguridad por envejecimiento y futuras reparaciones: **3.0 dB**.
+
+---
+
+### 4. Categorías de Par Trenzado de Cobre y el Porqué del Trenzado Diferencial
+
+En el cable UTP, los 4 pares no están trenzados al azar ni con la misma frecuencia:
+* Cada uno de los 4 pares tiene un **Paso de Torsión (Twist Rate)** ligeramente distinto (por ejemplo, el par verde da 75 vueltas por metro, mientras que el par naranja da 65 vueltas por metro).
+* **Fundamento electromagnético:** Si dos pares paralelos tuvieran exactamente el mismo paso de torsión, sus campos electromagnéticos se alinearían en fase en cada vuelta, provocando una diafonía masiva (**Crosstalk**). Al variar el paso de trenzado, los acoplamientos se cancelan mutuamente.
+* **Separador Central en Cruz (Spline / Cross-Filler en Cat 6):** El cable Categoría 6 incorpora una cruceta plástica de polietileno a lo largo de todo el cable que mantiene físicamente separados los cuatro pares a una distancia constante de 90 grados, reduciendo radicalmente el ruido *NEXT*.

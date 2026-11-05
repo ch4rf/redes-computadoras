@@ -1,73 +1,103 @@
 # Módulo 3: Cableado Estructurado
-## Tema 3.5: Metodología de Cálculos de Diseño y Certificación de Enlaces
+## Tema 3.5: Caso Práctico Resuelto de Cálculo Métrico, Presupuesto y Certificación
 
 ---
 
-### 1. Metodología de Cálculo Métrico de Materiales (Fórmulas para Examen Práctico UMG)
+### 1. Parámetros Eléctricos Avanzados de Certificación (Fluke Networks)
 
-En el examen práctico de la UMG, deberás calcular con precisión matemática la cantidad exacta de cable UTP, bobinas y accesorios requeridos para el plano del edificio. A continuación se presentan las fórmulas estandarizadas:
+Para certificar que una instalación de cableado de cobre cumple la norma **ANSI/TIA-568.2-D** para enlaces de 1 Gbps o 10 Gbps, se evalúan parámetros físicos de alta frecuencia:
 
-#### A. Cálculo del Cableado Horizontal (Por Piso o Área)
-1. **Distancia más cercana ($D_{\text{mín}}$):** Distancia del puesto de trabajo más próximo al rack (se asume típicamente entre **5 m y 6 m**).
-2. **Distancia más lejana ($D_{\text{máx}}$):**
-   * *Si el rack está en una esquina del plano:*
-     $$D_{\text{máx}} = \text{Largo del plano} + \text{Ancho del plano} + \text{Altura de bajada (4 m)}$$
-   * *Si el rack está ubicado al centro del plano:*
-     $$D_{\text{máx}} = \frac{\text{Largo}}{2} + \frac{\text{Ancho}}{2} + \text{Altura de bajada (4 m)}$$
-3. **Distancia Promedio ($D_{\text{prom}}$):**
-   $$D_{\text{prom}} = \frac{D_{\text{mín}} + D_{\text{máx}}}{2}$$
-4. **Distancia Promedio con Holgura del 10% ($D_{\text{holgura}}$):**
-   *(El 10% compensa curvas, bajadas en canaleta, esquinas y peinado dentro del rack).*
-   $$D_{\text{holgura}} = D_{\text{prom}} \times 1.10$$
-5. **Total de Cable Horizontal por Piso:**
-   $$\text{Total Metros} = D_{\text{holgura}} \times \text{Número de Tomas (Wall Mounts)}$$
-6. **Cantidad de Bobinas UTP Cat 6 (Cajas de 305 metros):**
-   $$\text{Bobinas} = \left\lceil \frac{\text{Total Metros}}{305} \right\rceil \quad \text{(Siempre se redondea al entero superior más cercano)}$$
+```text
+       TRANSMISOR                                                          RECEPTOR
+       [Par 1 (Tx)] === Señal Inyectada ===>                      ========> [Par 1 (Rx)]
+            |                                                         |
+     (NEXT medido aquí)                                        (FEXT medido aquí)
+            v                                                         v
+       [Par 2]      <--- Ruido Inducido ---                      <--------- [Par 2]
+```
 
-#### B. Cálculo del Cableado Vertical (Backbone entre Pisos)
-* Por cada enlace entre un IDF y el MDF:
-  $$\text{Metros Verticales} = (\text{Número de pisos de separación} \times 4\text{ m de entrepiso}) + 6\text{ m de holgura en racks (3 m en cada rack)}$$
-
-#### C. Cálculo del Cableado Inter-Edificios (Exterior)
-* Enlace de fibra óptica o cobre subterráneo entre dos edificios:
-  $$\text{Metros Exteriores} = \text{Distancia medida en croquis} + 20\text{ m de holgura (10 m de reserva en el rack de cada edificio)}$$
+1. **NEXT (Near-End Crosstalk - Diafonía en el Extremo Cercano):** Ruido electromagnético que se filtra del par transmisor al par receptor en el mismo extremo donde se inyecta la señal. Se mide en decibelios (dB). **A mayor valor en dB, mejor es el aislamiento**.
+2. **FEXT (Far-End Crosstalk - Diafonía en el Extremo Lejano):** Ruido inducido medido en el extremo opuesto del canal.
+3. **Pérdida de Inserción / Atenuación (Insertion Loss):** Disminución de la amplitud de la señal conforme se propaga por el cable. A mayor frecuencia o temperatura, mayor pérdida. **A menor valor en dB, menor pérdida**.
+4. **Pérdida de Retorno (Return Loss):** Medida de la energía reflejada de vuelta hacia la fuente debido a desajustes de impedancia característica ($100\ \Omega \pm 15\%$). Un destrenzado de más de 1.3 cm al montar el Jack arruina este parámetro.
+5. **Retardo de Propagación (Propagation Delay):** Tiempo que tarda la señal en viajar de un extremo al otro (máximo permitido: **555 nanosegundos** a 100 metros).
+6. **Sesgo de Retardo (Delay Skew):** La diferencia de tiempo de llegada entre el par más rápido y el más lento. Dado que cada par tiene un paso de trenzado distinto, los cables tienen longitudes físicas ligeramente distintas. **Límite máximo permitido: 45 nanosegundos**. Si el *Delay Skew* supera los 45 ns, los bits que viajan en paralelo por los 4 pares se desincronizan en la tarjeta Gigabit Ethernet.
+7. **PS-ANEXT (Power Sum Alien Near-End Crosstalk):** Ruido que entra al cable proveniente de cables adyacentes empaquetados en la misma canaleta (fundamental en Cat 6A a 10 Gbps).
 
 ---
 
-### 2. Parámetros Eléctricos de Prueba y Certificación (Fluke Tester)
+### 2. Caso Práctico Resuelto de Ingeniería (Modelo de Examen UMG)
 
-Para certificar que una instalación cumple con la norma ANSI/TIA/EIA-568 y opera a 1 Gbps o 10 Gbps, se utiliza un certificador de campo (como un Fluke DSX CableAnalyzer). Los parámetros obligatorios de evaluación son:
-
-#### A. Mapa de Cableado (Wire Map)
-Verifica la continuidad física pin a pin de los 8 hilos del cable. Detecta 5 fallas típicas de ponchado:
-1. **Hilo Abierto (*Open*):** Un hilo roto o mal ponchado que no hace contacto.
-2. **Cortocircuito (*Short*):** Dos o más hilos que hacen contacto eléctrico entre sí.
-3. **Pares Invertidos (*Reversed Pair*):** Los dos hilos de un mismo par están al revés (ej. pin 1 en pin 2 y pin 2 en pin 1).
-4. **Pares Transpuestos / Cruzados (*Transposed / Crossed Pair*):** Un par completo se ponchó en los pines de otro par (ej. Par verde en lugar del Par naranja).
-5. **Pares Divididos (*Split Pairs*):** ¡El error más engañoso de examen! Hay continuidad eléctrica en todos los pines (el tester barato enciende luces 1-2-3-4-5-6-7-8), pero los hilos se mezclaron entre pares distintos rompiendo el trenzado, lo que destruye la cancelación de ruido electromagnético.
-
-#### B. Pérdida de Inserción / Atenuación (Insertion Loss)
-* La pérdida de potencia de la señal eléctrica conforme viaja a lo largo del cable. Se mide en decibelios (**dB**). A mayor distancia o mayor temperatura ambiente, mayor atenuación. Si el cable supera los 90 metros, la atenuación reprueba la certificación.
-
-#### C. Diafonía (Crosstalk)
-El acoplamiento electromagnético no deseado de una señal de un par sobre los otros pares adyacentes:
-* **NEXT (Near-End Crosstalk - Diafonía en el extremo cercano):** Se mide en el mismo extremo donde el transmisor emite la señal. A mayor valor en dB, mejor (indica mayor aislamiento).
-* **FEXT (Far-End Crosstalk - Diafonía en el extremo lejano):** Se mide en el extremo receptor opuesto del cable.
-* **PS-NEXT (Power Sum NEXT):** Cálculo matemático que suma el ruido generado por tres pares sobre el cuarto par simultáneamente (vital para Gigabit Ethernet 1000BASE-T, que transmite por los 4 pares a la vez).
-
-#### D. Pérdida de Retorno (Return Loss)
-* Medida de la cantidad de energía de la señal que se refleja de vuelta hacia el transmisor debido a variaciones de impedancia (desajuste de 100 ohmios causado por dobleces bruscos, aplastamiento de cables o destrenzado excesivo al ponchar el conector RJ-45).
-* **Regla estricta de ponchado:** Al terminar un conector o Jack RJ-45, **no se debe destrenzar el cable más de 1.3 cm (0.5 pulgadas)** para evitar diafonía y pérdida de retorno.
+#### Enunciado del Problema:
+Se solicita diseñar el sistema de cableado estructurado para el nuevo edificio administrativo de 3 niveles de una sede universitaria.
+* **Dimensiones de cada piso:** 30 metros de largo por 20 metros de ancho.
+* **Altura de entrepiso:** 4.0 metros libres por piso.
+* **Distribución de tomas:** 
+  * Piso 1: 24 tomas dobles de red (48 puertos).
+  * Piso 2 (MDF Central con Servidores y Router): 16 tomas dobles (32 puertos).
+  * Piso 3: 20 tomas dobles (40 puertos).
+  * **Total de tomas de pared (Faceplates):** 60 tomas. **Total de cables/puntos:** 120 puntos de red.
+* **Ubicación de racks:** Racks centrados en el plano de cada piso.
 
 ---
 
-### 3. Preguntas Clave de Examen (Tipo UMG)
+#### Resolución Paso a Paso:
 
-**P1: ¿Cuál es el destrenzado máximo permitido en un cable UTP Cat 6 al momento de ponchar un Jack o conector RJ-45?**
-> **R:** Máximo **1.3 cm (0.5 pulgadas)** de destrenzado.
+#### Paso 1: Cálculos Geométricos de Cable Horizontal por Piso
+* **Distancia mínima asumida ($D_{\text{mín}}$):** $5.0\text{ m}$ (puestos contiguos al cuarto técnico).
+* **Distancia máxima con rack céntrico ($D_{\text{máx}}$):**
+  $$D_{\text{máx}} = \frac{\text{Largo}}{2} + \frac{\text{Ancho}}{2} + \text{Altura de bajada} = \frac{30}{2} + \frac{20}{2} + 4.0 = 15 + 10 + 4 = \mathbf{29.0 \text{ metros}}$$
+  *(Cumple con la norma TIA-568, ya que $29\text{ m} \le 90\text{ m}$ de enlace permanente).*
+* **Distancia promedio ($D_{\text{prom}}$):**
+  $$D_{\text{prom}} = \frac{D_{\text{mín}} + D_{\text{máx}}}{2} = \frac{5.0 + 29.0}{2} = \mathbf{17.0 \text{ metros}}$$
+* **Distancia promedio con 10% de holgura ($D_{\text{holgura}}$):**
+  $$D_{\text{holgura}} = 17.0 \times 1.10 = \mathbf{18.70 \text{ metros por punto}}$$
 
-**P2: ¿Qué falla de cableado permite que un multímetro reporte continuidad correcta en los 8 pines pero hace que la red falle o tenga velocidad pésima?**
-> **R:** La falla de **Pares Divididos (Split Pairs)**.
+#### Paso 2: Metraje Total de Cable UTP Horizontal y Bobinas
+* **Piso 1 (48 puntos):** $48 \times 18.70\text{ m} = 897.60\text{ m}$
+* **Piso 2 (32 puntos):** $32 \times 18.70\text{ m} = 598.40\text{ m}$
+* **Piso 3 (40 puntos):** $40 \times 18.70\text{ m} = 748.00\text{ m}$
+* **Total Cable Horizontal Edificio:**
+  $$\text{Total Metros} = 897.60 + 598.40 + 748.00 = \mathbf{2,244.00 \text{ metros}}$$
+* **Cantidad de Bobinas UTP Cat 6 (305 metros por caja):**
+  $$\text{Cajas} = \left\lceil \frac{2,244.00}{305} \right\rceil = \lceil 7.35 \rceil = \mathbf{8 \text{ Bobinas de 305 m}}$$
 
-**P3: ¿Por qué en el cálculo de cable horizontal se añade un 10% de holgura a la distancia promedio?**
-> **R:** Para compensar curvas en esquinas, subidas y bajadas por canaletas de pared, desvíos estructurales y la reserva necesaria para peinado dentro del rack del cuarto de telecomunicaciones.
+#### Paso 3: Cableado Vertical (Backbone entre Pisos con Cat 6A)
+* El **MDF** está en el **Piso 2**.
+  * Enlace IDF Piso 1 hacia MDF Piso 2: $(1\text{ piso} \times 4\text{ m}) + 6\text{ m de reserva} = 10\text{ metros}$.
+  * Enlace IDF Piso 3 hacia MDF Piso 2: $(1\text{ piso} \times 4\text{ m}) + 6\text{ m de reserva} = 10\text{ metros}$.
+  * *Tirada doble por redundancia:* $(10\text{ m} \times 2) + (10\text{ m} \times 2) = \mathbf{40 \text{ metros de cable UTP Cat 6A}}$.
+
+#### Paso 4: Dimensionamiento de Gabinetes y Racks (Unidades de Rack - U)
+* **IDF Piso 1 (48 puntos):**
+  * 2 Patch Panels Cat 6 de 24 puertos (2U)
+  * 2 Organizadores horizontales de cable (2U)
+  * 2 Switches de 24 puertos (2U)
+  * 1 PDU regleta de energía (1U)
+  * **Total Requerido:** 7U $\rightarrow$ Se instala un **Gabinete de pared de 9U o 12U**.
+* **MDF Piso 2 (Centro de Cómputo Principal):**
+  * Se instala un **Rack abierto de piso de 19" y 42U** para alojar Switches Core, Router Empresarial, Servidores y Patch Panels.
+
+---
+
+### 3. Presupuesto Formal en Quetzales de Guatemala (GTQ)
+
+A continuación se presenta la tabla con los precios de referencia estandarizados para evaluación:
+
+| Subsistema | Descripción del Material / Equipo | Cant | Unidad | Precio Unitario (GTQ) | Subtotal (GTQ) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **Área de Trabajo** | Faceplate superficial 2 puertos con caja | 60 | Pieza | Q 18.00 | Q 1,080.00 |
+| **Área de Trabajo** | Jack RJ-45 Keystone Categoría 6 | 120 | Pieza | Q 25.00 | Q 3,000.00 |
+| **Área de Trabajo** | Patch Cord UTP Cat 6 flexible de 3 metros | 120 | Pieza | Q 35.00 | Q 4,200.00 |
+| **Cableado Horizontal**| Bobina de Cable UTP Cat 6 (Caja 305m) | 8 | Caja | Q 1,150.00 | Q 9,200.00 |
+| **Canalización** | Canaleta plástica adhesiva 20*12 mm (Tramo 2m) | 180 | Tramo | Q 18.00 | Q 3,240.00 |
+| **Cableado Vertical** | Cable UTP Categoría 6A para Backbone | 40 | Metro | Q 12.00 | Q 480.00 |
+| **Cuarto Telecom (IDF)**| Gabinete de pared de telecomunicaciones 9U | 2 | Pieza | Q 950.00 | Q 1,900.00 |
+| **Cuarto Equipos (MDF)**| Rack abierto de piso de 19" (42U) | 1 | Pieza | Q 2,200.00 | Q 2,200.00 |
+| **Cuartos Técnicos** | Patch Panel modular 24 puertos Cat 6 | 6 | Pieza | Q 450.00 | Q 2,700.00 |
+| **Cuartos Técnicos** | Patch Cord UTP Cat 6 de 1 metro (Gabinete) | 120 | Pieza | Q 22.00 | Q 2,640.00 |
+| **Cuartos Técnicos** | Regleta de alimentación para rack (PDU) | 3 | Pieza | Q 280.00 | Q 840.00 |
+| **Equipamiento Activo** | Switch Administrable de 24 puertos Gigabit | 5 | Pieza | Q 2,800.00 | Q 14,000.00 |
+| **Equipamiento Activo** | Router Empresarial Gigabit Multi-Interfaz | 1 | Pieza | Q 1,950.00 | Q 1,950.00 |
+| **Administración** | Kit de etiquetas térmicas TIA-606 | 1 | Kit | Q 350.00 | Q 350.00 |
+| **TOTAL GENERAL** | **Presupuesto Total de Infraestructura de Red** | | | | **Q 47,780.00** |

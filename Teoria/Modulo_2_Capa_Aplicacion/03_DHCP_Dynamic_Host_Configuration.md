@@ -1,94 +1,89 @@
 # Módulo 2: Capa de Aplicación
-## Tema 2.3: DHCP (Dynamic Host Configuration Protocol - RFC 2131)
+## Tema 2.3: DHCP Exhaustivo (Trama BOOTP/DHCP, Transición DORA y DHCP Snooping)
 
 ---
 
-### 1. ¿Qué es DHCP y cuál es su Propósito?
-DHCP es el protocolo cliente-servidor que **automatiza la asignación de parámetros de red** a los dispositivos que se conectan a una red local (LAN).
+### 1. Anatomía Binaria de la Trama DHCP / BOOTP (RFC 2131)
 
-* **Puertos y Protocolo de Transporte:**
-  * Utiliza **UDP**.
-  * **Puerto 67 (Servidor DHCP):** Escucha peticiones de los clientes.
-  * **Puerto 68 (Cliente DHCP):** Escucha respuestas del servidor.
-* **Beneficios frente a la configuración estática:**
-  * Elimina errores humanos (como IPs duplicadas).
-  * Simplifica la administración en redes móviles (ej. laptops y celulares que cambian de sala).
-  * Reutiliza direcciones IP mediante el mecanismo de **concesión temporal (Lease Time)**.
+DHCP es una extensión directa del protocolo histórico **BOOTP**. Su formato de mensaje encapsulado en UDP (puertos 67 servidor / 68 cliente) tiene una longitud mínima de **240 bytes** más el campo de opciones:
 
----
-
-### 2. El Ciclo de Concesión: El Proceso DORA (Indispensable para Examen)
-
-Cuando una PC configurada en modo DHCP se enciende y conecta a la red, ejecuta 4 pasos secuenciales conocidos por el acrónimo **DORA**:
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Cliente as Cliente (PC sin IP)
-    participant Servidor as Servidor DHCP
-    
-    Note over Cliente: IP Origen: 0.0.0.0<br/>IP Destino: 255.255.255.255<br/>Puerto: UDP 68 -> 67
-    Cliente->>Servidor: 1. DHCP DISCOVER (Broadcast)
-    
-    Note over Servidor: Selecciona IP disponible del pool y reserva
-    Servidor->>Cliente: 2. DHCP OFFER (Broadcast o Unicast)
-    
-    Note over Cliente: Acepta la oferta del servidor
-    Cliente->>Servidor: 3. DHCP REQUEST (Broadcast)
-    
-    Note over Servidor: Confirma concesión y activa temporizador
-    Servidor->>Cliente: 4. DHCP ACK (Broadcast o Unicast)
-    
-    Note over Cliente: Configura IP, Máscara, Gateway y DNS en su NIC
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|     op (1)    |   htype (1)   |   hlen (1)    |   hops (1)    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                            xid (4)                            |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           secs (2)            |           flags (2)           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          ciaddr (4)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          yiaddr (4)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          siaddr (4)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          giaddr (4)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
+|                          chaddr (16)                          |
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          sname (64)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                          file (128)                           |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Magic Cookie (4)                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Options (Variable Length)                  |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
-#### Explicación Detallada de cada Fase:
-
-1. **D - DHCP Discover (Descubrimiento):**
-   * El cliente **no tiene dirección IP asignada**, por lo que coloca como IP origen `0.0.0.0`.
-   * Envía un mensaje en **Broadcast (`255.255.255.255`)** a través del puerto UDP `67` para localizar si existe algún servidor DHCP en la red local. Incluye su dirección MAC física en la carga útil.
-2. **O - DHCP Offer (Oferta):**
-   * El servidor DHCP recibe el broadcast, busca en su rango libre (*Pool*) una dirección IP disponible, la reserva temporalmente y le envía una propuesta al cliente.
-   * La oferta incluye: IP propuesta, Máscara de subred, Gateway por defecto, Servidores DNS y Tiempo de concesión (*Lease Time*).
-3. **R - DHCP Request (Solicitud):**
-   * El cliente elige una de las ofertas recibidas (si hay varios servidores DHCP) y envía un mensaje formal solicitando esa IP.
-   * **¿Por qué este mensaje es Broadcast?** Para notificar a todos los demás servidores DHCP de la red que su oferta fue rechazada y que pueden devolver esas IPs a sus pools de disponibles.
-4. **A - DHCP Acknowledgment / ACK (Reconocimiento):**
-   * El servidor elegido confirma la asignación definitiva, guarda el registro en su tabla de arrendamientos y arranca el contador de tiempo (*Lease Time*). A partir de este momento, el cliente puede comunicarse libremente.
-   * *Si la IP ya no está disponible por error, el servidor enviaría un **DHCP NAK** (Negative ACK), obligando al cliente a reiniciar el proceso DORA.*
+#### Descripción Rigurosa de Campos de Examen:
+1. **`op` (Message Opcode - 1 byte):** `1` = BOOTREQUEST (enviado por cliente); `2` = BOOTREPLY (enviado por servidor).
+2. **`htype` / `hlen` (Hardware Type / Length - 1 byte c/u):** Para Ethernet, `htype = 1` y `hlen = 6` (6 bytes = 48 bits de dirección MAC).
+3. **`hops` (1 byte):** Contador incrementado por los routers DHCP Relay. Si supera 16 saltos, el paquete se descarta para evitar bucles.
+4. **`xid` (Transaction ID - 4 bytes):** Identificador pseudoaleatorio generado por el cliente para correlacionar la respuesta con su petición.
+5. **`ciaddr` (Client IP Address - 4 bytes):** Dirección IP actual del cliente. **Solo es distinta de 0.0.0.0 cuando el cliente renueva una IP ya asignada**.
+6. **`yiaddr` (Your IP Address - 4 bytes):** La dirección IP que el servidor le está otorgando al cliente.
+7. **`siaddr` (Next Server IP Address - 4 bytes):** Dirección IP del servidor TFTP que el cliente debe consultar para arrancar por red (PXE boot).
+8. **`giaddr` (Gateway / Relay IP Address - 4 bytes):** ¡Pregunta fija de examen! Cuando un router actúa como **DHCP Relay Agent** (`ip helper-address`), escribe la IP de su interfaz local en este campo para que el servidor DHCP sepa de **qué subred física debe extraer la IP del pool**.
+9. **`chaddr` (Client Hardware Address - 16 bytes):** Dirección MAC de la tarjeta de red del cliente.
+10. **Magic Cookie (4 bytes):** Los 4 bytes fijos `0x63 0x82 0x53 0x63` que indican el inicio del área de opciones DHCP.
 
 ---
 
-### 3. Temporizadores de Renovación de Arrendamiento (T1 y T2)
+### 2. Matriz de Estados de Campos en el Proceso DORA
 
-La IP no se le regala al cliente para siempre; se le "alquila" durante un tiempo llamado **Lease Time** (ej. 24 horas, 8 días):
+Para sacar 100 en un examen de análisis de tramas, memoriza qué valores llevan estos campos en cada uno de los 4 pasos:
 
-* **Temporizador T1 (50% del Lease):** Al cumplirse la mitad del tiempo de concesión, el cliente envía un mensaje **DHCP Request en modo Unicast directo al mismo servidor** que le dio la IP. Si el servidor responde con un ACK, el tiempo se reinicia al 100%.
-* **Temporizador T2 (87.5% del Lease):** Si el servidor original no respondió en T1 (por ejemplo, porque se cayó o está apagado), al llegar al 87.5% del tiempo el cliente entra en modo pánico y envía un **DHCP Request en Broadcast** para que cualquier otro servidor DHCP activo en la red le renueve la concesión.
-* **Expiración (100% del Lease):** Si nadie responde al 100%, el cliente debe liberar la IP inmediatamente (`0.0.0.0`), pierde la conexión y debe empezar desde cero con un nuevo `DHCP Discover`.
-
----
-
-### 4. Parámetros que Entrega el Servidor DHCP (DHCP Options)
-
-Un servidor DHCP entrega mucho más que una simple IP:
-- **Option 1:** Máscara de subred (*Subnet Mask*).
-- **Option 3:** Enrutador por defecto (*Default Gateway*).
-- **Option 6:** Servidores de nombres de dominio (*DNS Servers*).
-- **Option 15:** Nombre de dominio local (ej. `miempresa.local`).
-- **Option 51:** Tiempo de concesión (*IP Address Lease Time*).
+| Campo del Paquete | 1. DHCP DISCOVER | 2. DHCP OFFER | 3. DHCP REQUEST | 4. DHCP ACK |
+| :--- | :---: | :---: | :---: | :---: |
+| **`op`** | 1 (Request) | 2 (Reply) | 1 (Request) | 2 (Reply) |
+| **IP Origen (Capa 3)** | `0.0.0.0` | `IP_Servidor` | `0.0.0.0` | `IP_Servidor` |
+| **IP Destino (Capa 3)** | `255.255.255.255` | `255.255.255.255` o Unicast | `255.255.255.255` | `255.255.255.255` o Unicast |
+| **`ciaddr` (Client IP)** | `0.0.0.0` | `0.0.0.0` | `0.0.0.0` | `0.0.0.0` |
+| **`yiaddr` (Your IP)** | `0.0.0.0` | **IP Asignada (ej. .10)** | `0.0.0.0` | **IP Asignada (ej. .10)** |
+| **`chaddr` (Client MAC)** | MAC de la PC | MAC de la PC | MAC de la PC | MAC de la PC |
+| **Option 53 (Tipo)** | `1` (Discover) | `2` (Offer) | `3` (Request) | `5` (ACK) |
 
 ---
 
-### 5. El Agente de Retransmisión DHCP (DHCP Relay Agent / IP Helper-Address)
+### 3. Seguridad en Capa 2: Ataques DHCP y DHCP Snooping
 
-* **Problema:** Los Routers **bloquean por defecto los mensajes de Broadcast**. Como el mensaje `DHCP Discover` es un broadcast (`255.255.255.255`), los clientes de la Subred B jamás podrían alcanzar al servidor DHCP ubicado en la Subred A.
-* **Solución (DHCP Relay):** Se configura el Router para que intercepte esos broadcasts en la interfaz local y los reenvíe como un mensaje **Unicast normal** directamente a la IP del servidor DHCP.
-  * *En routers Cisco, esto se activa en la interfaz con el comando:* `ip helper-address <IP_DEL_SERVIDOR_DHCP>`.
+Dado que DHCP no incluye autenticación nativa, las redes locales son vulnerables a dos ataques letales:
 
----
+#### A. Ataque de Inanición DHCP (DHCP Starvation Attack)
+* Un atacante ejecuta una herramienta (como *Yersinia*) que envía millones de mensajes `DHCP Discover` falsificados con direcciones MAC ficticias en `chaddr`.
+* **Efecto:** Agota en cuestión de segundos todo el rango (*Pool*) de direcciones IP del servidor legítimo. Los usuarios reales no pueden obtener IP.
 
-### 6. Direccionamiento APIPA (Automatic Private IP Addressing)
-Si una máquina Windows está configurada en DHCP pero ningún servidor DHCP responde al proceso DORA, el sistema operativo se autoasigna una dirección del rango **APIPA**:
-* **Rango APIPA:** `169.254.0.1` a `169.254.255.254` (Máscara `/16` o `255.255.0.0`).
-* **Síntoma en examen:** Si una PC en Packet Tracer o en un caso real tiene una IP `169.254.x.x`, significa que **falló la comunicación con el servidor DHCP**. Permite comunicarse en la misma subred local, pero **no tiene salida a Internet ni Default Gateway**.
+#### B. Servidor DHCP Malicioso (Rogue DHCP Server / Man-in-the-Middle)
+* Tras agotar el servidor legítimo, el atacante enciende su propio servidor DHCP en la red.
+* Entrega a las víctimas su propia IP como **Default Gateway** y sus propios servidores DNS.
+* **Efecto:** Todo el tráfico bancario, contraseñas y correos de los usuarios pasa a través de la computadora del atacante antes de salir a Internet.
+
+#### C. La Solución Cisco: DHCP Snooping
+Característica de seguridad de Capa 2 configurada en los Switches Cisco que clasifica los puertos físicos en dos categorías:
+1. **Trusted Ports (Puertos de Confianza):** Puertos conectados hacia el servidor DHCP legítimo o enlaces troncales hacia el Router. Se les permite reenviar todos los mensajes DHCP.
+2. **Untrusted Ports (Puertos No Confiables):** Todos los puertos de acceso donde se conectan usuarios finales. **El switch descarta y bloquea automáticamente cualquier mensaje `DHCP Offer` o `DHCP ACK` que provenga de un puerto no confiable**, impidiendo la existencia de servidores DHCP piratas.
+3. **DHCP Snooping Binding Database:** El switch construye una tabla segura en memoria que mapea `MAC + IP Asignada + Puerto Físico + VLAN`, la cual sirve como base para evitar ataques de suplantación de ARP (*Dynamic ARP Inspection - DAI*).

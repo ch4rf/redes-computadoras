@@ -5,20 +5,40 @@
 
 ### 1. El Código de 12 Colores para Fibra Óptica (Norma TIA-598-C)
 
-En cables de fibra óptica multifibra (ej. cables exteriores de tubo holgado o *Loose Tube* con 24, 48 o 72 hilos), los hilos de vidrio son tan delgados que no se pueden numerar con texto impreso. La norma **TIA-598-C** establece un código cromático estricto de **12 colores** que debe memorizarse de izquierda a derecha:
-
-```text
- 1. Azul (BL)      2. Naranja (OR)    3. Verde (GR)      4. Marrón (BR)
- 5. Gris (SL)      6. Blanco (WH)     7. Rojo (RD)       8. Negro (BK)
- 9. Amarillo (YL) 10. Violeta (VI)   11. Rosa (RS)      12. Aqua (AQ)
-```
+En cables de fibra óptica multifibra (ej. cables exteriores de tubo holgado o *Loose Tube* con 24, 48 o 72 hilos), los hilos de vidrio son tan delgados que no se pueden numerar con texto impreso. La norma **TIA-598-C** establece un código cromático estricto de **12 colores** que debe memorizarse en orden:
 
 ```mermaid
-graph LR
-    C1["1. Azul"] --> C2["2. Naranja"] --> C3["3. Verde"] --> C4["4. Marrón"]
-    C4 --> C5["5. Gris"] --> C6["6. Blanco"] --> C7["7. Rojo"] --> C8["8. Negro"]
-    C8 --> C9["9. Amarillo"] --> C10["10. Violeta"] --> C11["11. Rosa"] --> C12["12. Aqua"]
+flowchart LR
+    subgraph TIA598 ["Código de 12 Colores Universal (TIA-598-C)"]
+        direction LR
+        C1["1. Azul"] --> C2["2. Naranja"] --> C3["3. Verde"] --> C4["4. Marrón"]
+        C4 --> C5["5. Gris"] --> C6["6. Blanco"] --> C7["7. Rojo"] --> C8["8. Negro"]
+        C8 --> C9["9. Amarillo"] --> C10["10. Violeta"] --> C11["11. Rosa"] --> C12["12. Aqua"]
+    end
+
+    style C1 fill:#1d4ed8,stroke:#93c5fd,color:#fff
+    style C2 fill:#ea580c,stroke:#fed7aa,color:#fff
+    style C3 fill:#15803d,stroke:#bbf7d0,color:#fff
+    style C4 fill:#78350f,stroke:#fde68a,color:#fff
+    style C5 fill:#64748b,stroke:#cbd5e1,color:#fff
+    style C6 fill:#f8fafc,stroke:#94a3b8,color:#000
+    style C7 fill:#b91c1c,stroke:#fca5a5,color:#fff
+    style C8 fill:#020617,stroke:#64748b,color:#fff
+    style C9 fill:#ca8a04,stroke:#fef08a,color:#000
+    style C10 fill:#7e22ce,stroke:#e9d5ff,color:#fff
+    style C11 fill:#db2777,stroke:#fbcfe8,color:#fff
+    style C12 fill:#0d9488,stroke:#99f6e4,color:#fff
 ```
+
+#### Tabla de Identificación Mnemotécnica:
+| Posición | Color | Abreviatura TIA | Posición | Color | Abreviatura TIA |
+| :---: | :--- | :---: | :---: | :--- | :---: |
+| **1** | **Azul** | BL (*Blue*) | **7** | **Rojo** | RD (*Red*) |
+| **2** | **Naranja** | OR (*Orange*) | **8** | **Negro** | BK (*Black*) |
+| **3** | **Verde** | GR (*Green*) | **9** | **Amarillo** | YL (*Yellow*) |
+| **4** | **Marrón** | BR (*Brown*) | **10** | **Violeta** | VI (*Violet*) |
+| **5** | **Gris / Pizarra**| SL (*Slate*) | **11** | **Rosa** | RS (*Rose*) |
+| **6** | **Blanco** | WH (*White*) | **12** | **Aqua / Turquesa** | AQ (*Aqua*) |
 
 #### Identificación Bidimensional en Cables de Tubo Holgado:
 En un cable de 24 hilos que contiene 2 tubos plásticos amortiguadores con 12 fibras cada uno:
@@ -65,7 +85,25 @@ $$A_{\text{total}} = (\alpha \times L) + (N_{\text{conectores}} \times A_{\text{
 
 ---
 
-### 4. Categorías de Par Trenzado de Cobre y el Porqué del Trenzado Diferencial
+### 4. Fibra Monomodo (SMF) vs. Multimodo (MMF)
+
+```mermaid
+flowchart TD
+    subgraph SMF ["Fibra Monomodo (SMF)"]
+        F1["Núcleo ultra delgado (9 µm)<br/>Fuente: LÁSER Infrarrojo (1310 / 1550 nm)<br/>Un solo haz de luz recto sin dispersión modal<br/>Distancias: 10 km a 80+ km<br/>Chaqueta estándar: Amarilla"]
+    end
+    
+    subgraph MMF ["Fibra Multimodo (MMF)"]
+        F2["Núcleo ancho (50 o 62.5 µm)<br/>Fuente: LED o VCSEL (850 / 1300 nm)<br/>Múltiples haces de luz (dispersión modal presente)<br/>Distancias: 300 m a 550 m (a 10 Gbps)<br/>Chaqueta estándar: Aqua (OM3/OM4) o Naranja"]
+    end
+
+    style SMF fill:#1e293b,stroke:#eab308,stroke-width:2px,color:#fff
+    style MMF fill:#1e293b,stroke:#06b6d4,stroke-width:2px,color:#fff
+```
+
+---
+
+### 5. Categorías de Par Trenzado de Cobre y el Porqué del Trenzado Diferencial
 
 En el cable UTP, los 4 pares no están trenzados al azar ni con la misma frecuencia:
 * Cada uno de los 4 pares tiene un **Paso de Torsión (Twist Rate)** ligeramente distinto (por ejemplo, el par verde da 75 vueltas por metro, mientras que el par naranja da 65 vueltas por metro).

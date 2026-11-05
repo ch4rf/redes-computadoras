@@ -53,12 +53,18 @@ sequenceDiagram
 El protocolo de envío de correo **SMTP (Puerto 25/587)** no tiene ningún mecanismo para verificar la identidad del emisor; cualquiera puede enviar un paquete SMTP afirmando ser `rectoria@umg.edu.gt`. Para evitar el fraude y la suplantación (*Spoofing*), se utilizan tres tecnologías combinadas en el DNS:
 
 ```mermaid
-graph TD
-    MTA["Servidor de Correo Remoto recibe un email<br/>From: rectoria@umg.edu.gt"] --> SPF["1. Consulta SPF en DNS<br/>¿La IP del servidor emisor está autorizada en el registro TXT?"]
-    MTA --> DKIM["2. Consulta DKIM en DNS<br/>¿La firma criptográfica del encabezado coincide con la clave pública en el DNS?"]
-    SPF --> DMARC["3. Política DMARC en DNS<br/>Si falla SPF o DKIM, ¿qué hago con el correo?<br/>(p=none, p=quarantine o p=reject)"]
+flowchart TD
+    MTA["Servidor de Correo Receptor<br/>Recibe email: From: rectoria@umg.edu.gt"] --> SPF["1. Consulta SPF en DNS<br/>¿La IP del servidor emisor está en la lista blanca TXT?"]
+    MTA --> DKIM["2. Consulta DKIM en DNS<br/>¿La firma criptográfica del correo coincide con la clave pública?"]
+    SPF --> DMARC["3. Validación de Política DMARC en DNS<br/>¿Qué hacer si falla SPF o DKIM?<br/>(p=none, p=quarantine o p=reject)"]
     DKIM --> DMARC
-    DMARC --> Delivery["Decisión Final:<br/>Bandeja de Entrada, Carpeta Spam o Rechazo Total"]
+    DMARC --> DECISION["Decisión Final:<br/>Bandeja de Entrada, Carpeta Spam o Rechazo Total"]
+
+    style MTA fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style SPF fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style DKIM fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style DMARC fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style DECISION fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 1. **SPF (Sender Policy Framework - Registro TXT en DNS):**  

@@ -23,13 +23,19 @@ El **Cableado Estructurado** es una infraestructura de telecomunicaciones unific
 En evaluaciones de redes y proyectos de infraestructura física de telecomunicaciones, debes memorizar cuatro normas primordiales:
 
 ```mermaid
-graph LR
-    subgraph Normas TIA-EIA
-        A["ANSI/TIA/EIA-568<br/>Requisitos de Cableado y Componentes"]
-        B["ANSI/TIA/EIA-569<br/>Rutas y Espacios (Canalizaciones y Racks)"]
-        C["ANSI/TIA/EIA-606<br/>Administración y Etiquetado"]
-        D["ANSI/TIA/EIA-607<br/>Puesta a Tierra y Aterrizaje"]
+flowchart TD
+    subgraph NORMAS ["Familia de Normas ANSI/TIA/EIA para Telecomunicaciones"]
+        A["<b>ANSI/TIA/EIA-568</b><br/>Requisitos Generales de Cableado, Componentes y Topología en Estrella"]
+        B["<b>ANSI/TIA/EIA-569</b><br/>Rutas y Espacios (Ductos, Canaletas al 40% de llenado y Cuartos Técnicos)"]
+        C["<b>ANSI/TIA/EIA-606</b><br/>Administración, Codificación Única y Etiquetado de Infraestructura"]
+        D["<b>ANSI/TIA/EIA-607</b><br/>Puesta a Tierra y Aterrizaje Eléctrico (Barras TMGB / TGB)"]
     end
+
+    style NORMAS fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style A fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style B fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style C fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style D fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
 ```
 
 #### A. ANSI/TIA/EIA-568: Alambrado de Telecomunicaciones para Edificios Comerciales

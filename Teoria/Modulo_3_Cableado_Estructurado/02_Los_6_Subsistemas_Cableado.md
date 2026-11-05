@@ -8,15 +8,24 @@
 La norma divide la infraestructura de un edificio en seis subsistemas modulares e independientes:
 
 ```mermaid
-graph TD
+flowchart TD
     EF["1. Instalaciones de Entrada (Entrance Facility - EF)"] --> ER["2. Cuarto de Equipos (Equipment Room - ER / MDF)"]
-    ER -->|3. Cableado Backbone / Vertical| TR1["4. Cuarto Telecomunicaciones Piso 1 (TR/IDF 1)"]
-    ER -->|3. Cableado Backbone / Vertical| TR2["4. Cuarto Telecomunicaciones Piso 2 (TR/IDF 2)"]
-    ER -->|3. Cableado Backbone / Vertical| TR3["4. Cuarto Telecomunicaciones Piso 3 (TR/IDF 3)"]
+    ER -->|"3. Cableado Backbone / Vertical"| TR1["4. Cuarto Telecomunicaciones Piso 1 (TR/IDF 1)"]
+    ER -->|"3. Cableado Backbone / Vertical"| TR2["4. Cuarto Telecomunicaciones Piso 2 (TR/IDF 2)"]
+    ER -->|"3. Cableado Backbone / Vertical"| TR3["4. Cuarto Telecomunicaciones Piso 3 (TR/IDF 3)"]
     
-    TR1 -->|5. Cableado Horizontal <= 90m| WA1["6. Área de Trabajo Piso 1 (Work Area - WA)"]
-    TR2 -->|5. Cableado Horizontal <= 90m| WA2["6. Área de Trabajo Piso 2 (Work Area - WA)"]
-    TR3 -->|5. Cableado Horizontal <= 90m| WA3["6. Área de Trabajo Piso 3 (Work Area - WA)"]
+    TR1 -->|"5. Cableado Horizontal <= 90m"| WA1["6. Área de Trabajo Piso 1 (Work Area - WA)"]
+    TR2 -->|"5. Cableado Horizontal <= 90m"| WA2["6. Área de Trabajo Piso 2 (Work Area - WA)"]
+    TR3 -->|"5. Cableado Horizontal <= 90m"| WA3["6. Área de Trabajo Piso 3 (Work Area - WA)"]
+
+    style EF fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style ER fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style TR1 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style TR2 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style TR3 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style WA1 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style WA2 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style WA3 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -59,16 +68,23 @@ $$\text{Enlace Permanente (Permanent Link)} \le 90 \text{ metros}$$
 $$\text{Patch Cords Totales (Gabinete + Área de Trabajo)} \le 10 \text{ metros}$$
 $$\text{Canal Completo (Channel Link)} \le 100 \text{ metros}$$
 
-```text
-[TR/IDF]                                                       [Área de Trabajo]
-Patch Panel -------- Cable Horizontal Sólido (Máx 90 m) -------- Toma / Jack RJ45
-     |                                                                   |
-Patch Cord (Gabinete)                                            Patch Cord (Usuario)
-(Máx 5 m)                                                        (Máx 5 m)
-     |                                                                   |
-Switch 2960                                                         PC / Laptop
-\______________________________________________________________________________/
-                           CANAL TOTAL (MÁXIMO 100 METROS)
+```mermaid
+flowchart LR
+    subgraph TR ["Cuarto Telecomunicaciones (TR / IDF)"]
+        SW["Switch de Acceso<br/>Cisco Catalyst 2960"] ---|"Patch Cord Gabinete<br/>(Máx 5 metros)"| PP["Patch Panel Modular<br/>24 Puertos Cat 6"]
+    end
+
+    subgraph HORIZ ["Tendido Horizontal en Pared / Techo"]
+        PP ===|"Enlace Permanente de Cobre Sólido<br/>(Máximo 90 metros)"| JACK["Toma de Pared Faceplate<br/>Jack RJ-45 Keystone"]
+    end
+
+    subgraph WA ["Área de Trabajo (Work Area)"]
+        JACK ---|"Patch Cord de Usuario<br/>(Máx 5 metros, típicamente 3m)"| PC["Estación de Trabajo / PC<br/>Tarjeta NIC"]
+    end
+
+    style TR fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style HORIZ fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style WA fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 * **Tipo de conductor:** El cable horizontal que va dentro de tuberías y canaletas utiliza conductor **sólido** (alambre de cobre rígido de una sola hebra), ideal para ponchado y largas distancias.

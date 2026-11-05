@@ -17,18 +17,21 @@ La Capa de Aplicación es la capa más cercana al usuario final. Proporciona la 
 En la Capa de Aplicación existen dos modelos de diseño fundamentales para estructurar la comunicación:
 
 ```mermaid
-graph TD
-    subgraph Modelo Cliente-Servidor
-        S[Servidor Centralizado] <--> C1[Cliente 1]
-        S <--> C2[Cliente 2]
-        S <--> C3[Cliente 3]
+flowchart TD
+    subgraph CS ["Modelo Cliente-Servidor (Centralizado)"]
+        S["Servidor Centralizado<br/>(Almacena datos y servicios)"] <--> C1["Cliente 1 (Navegador)"]
+        S <--> C2["Cliente 2 (PC Escritorio)"]
+        S <--> C3["Cliente 3 (Móvil)"]
     end
     
-    subgraph Modelo Peer-to-Peer - P2P
-        P1[Nodo A / Peer] <--> P2[Nodo B / Peer]
-        P2 <--> P3[Nodo C / Peer]
+    subgraph P2P ["Modelo Peer-to-Peer - P2P (Descentralizado)"]
+        P1["Nodo A (Cliente / Servidor)"] <--> P2["Nodo B (Cliente / Servidor)"]
+        P2 <--> P3["Nodo C (Cliente / Servidor)"]
         P3 <--> P1
     end
+
+    style CS fill:#1e293b,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style P2P fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 #### A. Modelo Cliente-Servidor (Client-Server Model)

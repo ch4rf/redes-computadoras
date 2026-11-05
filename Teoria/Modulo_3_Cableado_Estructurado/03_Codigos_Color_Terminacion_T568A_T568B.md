@@ -15,12 +15,7 @@ Un cable de red estándar de 4 pares (8 hilos de cobre) utiliza un código de co
 
 ### 2. Normas de Terminación: T568A vs. T568B (Pinout RJ-45)
 
-La norma ANSI/TIA/EIA-568 define dos secuencias de conexión para el conector modular de 8 posiciones (RJ-45 macho) y los Jacks hembra (Keystone):
-
-```text
-       VISTA FRONTAL DEL CONECTOR RJ-45 (Pines 1 al 8 con el clip/lengüeta hacia abajo)
-       [ 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 ]
-```
+La norma ANSI/TIA/EIA-568 define dos secuencias de conexión para el conector modular de 8 posiciones (RJ-45 macho) y los Jacks hembra (Keystone), vistos de frente con la lengüeta/clip hacia abajo (pines del 1 al 8 de izquierda a derecha):
 
 | Pin | Norma T568A | Norma T568B (La más utilizada comercialmente) | Par Asociado |
 | :---: | :--- | :--- | :---: |
@@ -48,8 +43,13 @@ La **ÚNICA diferencia** entre T568A y T568B es que **se intercambian entre sí 
   * Switch (Capa 2) $\longleftrightarrow$ Router (Capa 3).
   * Patch Panel $\longleftrightarrow$ Switch.
 
-```text
-Extremo 1 (T568B) -------------------- Extremo 2 (T568B)  ==> Cable Directo
+```mermaid
+flowchart LR
+    subgraph DIRECTO ["CABLE DIRECTO (STRAIGHT-THROUGH)"]
+        direction LR
+        E1_A["Extremo 1<br/>Norma T568B"] ===|"8 Hilos Directos (Pin a Pin)"| E2_A["Extremo 2<br/>Norma T568B"]
+    end
+    style DIRECTO fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
 ```
 
 #### B. Cable Cruzado (Cross-Over)
@@ -60,8 +60,13 @@ Extremo 1 (T568B) -------------------- Extremo 2 (T568B)  ==> Cable Directo
   * PC (Capa 3/7) $\longleftrightarrow$ PC (Capa 3/7) *(Conexión directa entre computadoras)*.
   * PC (Capa 3/7) $\longleftrightarrow$ Router (Capa 3) *(Ambos transmiten por pines 1 y 2)*.
 
-```text
-Extremo 1 (T568A) -------------------- Extremo 2 (T568B)  ==> Cable Cruzado
+```mermaid
+flowchart LR
+    subgraph CRUZADO ["CABLE CRUZADO (CROSS-OVER)"]
+        direction LR
+        E1_B["Extremo 1<br/>Norma T568A"] ===|"Cruza Pines 1y2 con 3y6"| E2_B["Extremo 2<br/>Norma T568B"]
+    end
+    style CRUZADO fill:#0f172a,stroke:#f59e0b,stroke-width:2px,color:#fff
 ```
 
 #### C. Auto-MDIX (Automatic Medium-Dependent Interface Crossover)

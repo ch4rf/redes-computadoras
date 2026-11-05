@@ -7,13 +7,31 @@
 
 Para certificar que una instalación de cableado de cobre cumple la norma **ANSI/TIA-568.2-D** para enlaces de 1 Gbps o 10 Gbps, se evalúan parámetros físicos de alta frecuencia:
 
-```text
-       TRANSMISOR                                                          RECEPTOR
-       [Par 1 (Tx)] === Señal Inyectada ===>                      ========> [Par 1 (Rx)]
-            |                                                         |
-     (NEXT medido aquí)                                        (FEXT medido aquí)
-            v                                                         v
-       [Par 2]      <--- Ruido Inducido ---                      <--------- [Par 2]
+```mermaid
+flowchart LR
+    subgraph TX_SIDE ["Extremo Transmisor (Local)"]
+        direction TB
+        TX1["Par Transmisor 1<br/>(Inyecta Señal)"]
+        NEXT_M["<b>NEXT Medido Aquí</b><br/>(Ruido Cercano)"]
+        TX2["Par Adyacente 2<br/>(Afectado)"]
+        TX1 -.->|"Inducción Electromagnética"| NEXT_M -.-> TX2
+    end
+
+    subgraph CABLE ["Canal de Par Trenzado UTP Cat 6"]
+        TX1 ===|"Señal Viaja por el Cable"| RX1
+    end
+
+    subgraph RX_SIDE ["Extremo Receptor (Remoto)"]
+        direction TB
+        RX1["Par Receptor 1<br/>(Señal Atenuada)"]
+        FEXT_M["<b>FEXT Medido Aquí</b><br/>(Ruido Lejano)"]
+        RX2["Par Adyacente 2"]
+        RX1 -.->|"Inducción al Final"| FEXT_M -.-> RX2
+    end
+
+    style TX_SIDE fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style CABLE fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style RX_SIDE fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 1. **NEXT (Near-End Crosstalk - Diafonía en el Extremo Cercano):** Ruido electromagnético que se filtra del par transmisor al par receptor en el mismo extremo donde se inyecta la señal. Se mide en decibelios (dB). **A mayor valor en dB, mejor es el aislamiento**.

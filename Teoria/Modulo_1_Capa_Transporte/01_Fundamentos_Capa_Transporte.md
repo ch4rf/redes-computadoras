@@ -4,27 +4,29 @@
 ---
 
 ### 1. Propósito y Función Principal en la Pila de Protocolos
-La **Capa de Transporte** es la cuarta capa del modelo de referencia OSI y el corazón funcional de la pila TCP/IP. 
+La **Capa de Transporte** es la cuarta capa del modelo de referencia OSI y el corazón funcional de la pila TCP/IP.
 
-```text
-+-----------------------------------------------------------------------------------------+
-|                               CAPA DE APLICACIÓN (Capa 7)                                |
-|           Procesos de usuario: Navegador (PID 4120), Spotify (PID 5012)                 |
-+-----------------------------------------------------------------------------------------+
-                                      |
-                     ENTREGA PROCESO A PROCESO (Puertos)
-                                      v
-+-----------------------------------------------------------------------------------------+
-|                               CAPA DE TRANSPORTE (Capa 4)                               |
-|                  TCP (Orientado a Conexión) / UDP (No Orientado)                         |
-+-----------------------------------------------------------------------------------------+
-                                      |
-                       ENTREGA HOST A HOST (Direcciones IP)
-                                      v
-+-----------------------------------------------------------------------------------------+
-|                                  CAPA DE RED (Capa 3)                                    |
-|                                       IPv4 / IPv6                                       |
-+-----------------------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    subgraph L7 ["CAPA DE APLICACIÓN (Capa 7)"]
+        A1["Procesos de Usuario en Ejecución<br/>(Navegador Web, Spotify, Discord, Correo)"]
+    end
+
+    L7 -->|"ENTREGA PROCESO A PROCESO<br/>(Identificación por Números de Puerto)"| L4
+
+    subgraph L4 ["CAPA DE TRANSPORTE (Capa 4)"]
+        T1["TCP (Orientado a Conexión) / UDP (No Orientado)<br/>Multiplexación, Segmentación y Búferes"]
+    end
+
+    L4 -->|"ENTREGA HOST A HOST<br/>(Enrutamiento por Direcciones IP)"| L3
+
+    subgraph L3 ["CAPA DE RED (Capa 3)"]
+        R1["IPv4 / IPv6<br/>Direccionamiento Lógico Global"]
+    end
+
+    style L7 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style L4 fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#fff
+    style L3 fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#fff
 ```
 
 * **Diferencia crítica de examen con la Capa de Red (Capa 3):**
@@ -40,7 +42,7 @@ En cualquier momento, un usuario puede tener abiertas decenas de pestañas web, 
 
 #### B. Segmentación y Reensamblado
 * Los medios físicos de transmisión (como Ethernet o Wi-Fi) tienen un límite en la cantidad de bytes que pueden transportar en un solo frame (llamado **MTU - Maximum Transmission Unit**, usualmente **1,500 bytes**).
-* La capa de transporte divide los flujos continuos de datos de la capa de aplicación (que pueden medir gigabytes) en bloques discretos llamados **Segmentos** (en TCP) o **Datagramas** (en UDP).
+* La capa de transporte divide los flujos continuos de datos de la capa de aplicación en bloques discretos llamados **Segmentos** (en TCP) o **Datagramas** (en UDP).
 * En el host receptor, la capa de transporte recibe cada bloque, valida su integridad y los reensambla en el orden exacto para entregarlos a la aplicación como un flujo transparente.
 
 #### C. Búferes del Kernel del Sistema Operativo
@@ -58,7 +60,7 @@ Un **Socket** es una abstracción de software del sistema operativo que represen
 $$\text{Socket} = (\text{Dirección IP}, \text{Número de Puerto})$$
 
 #### El Par de Sockets (Socket Pair o 4-Tupla)
-Para que exista una sesión de comunicación activa en Internet, se requiere identificar unívocamente ambos extremos mediante una **4-tupla** (o 5-tupla si se incluye el protocolo de transporte):
+Para que exista una sesión de comunicación activa en Internet, se requiere identificar unívocamente ambos extremos mediante una **4-tupla**:
 
 $$\text{4-Tupla} = (\text{IP Origen}, \text{Puerto Origen}, \text{IP Destino}, \text{Puerto Destino})$$
 
@@ -74,14 +76,15 @@ $$\text{4-Tupla} = (\text{IP Origen}, \text{Puerto Origen}, \text{IP Destino}, \
 
 ### 4. Clasificación Rigurosa de Puertos según IANA (16 Bits = 65,536 Puertos)
 
-Un número de puerto es un entero sin signo de **16 bits**, lo que da un rango posible de $0$ a $2^{16}-1$ ($0$ a $65,535$):
+Un número de puerto es un entero sin signo de **16 bits**, lo que da un rango posible de $0$ a $2^{16}-1$ ($0$ a $65,535$).
 
-```text
-0                               1024                             49152                        65535
-+--------------------------------+--------------------------------+-------------------------------+
-|     Well-Known Ports           |       Registered Ports         |   Dynamic / Private Ports     |
-|         (0 - 1023)             |        (1024 - 49151)          |       (49152 - 65535)         |
-+--------------------------------+--------------------------------+-------------------------------+
+```mermaid
+flowchart LR
+    P1["Puertos Bien Conocidos<br/>(Well-Known Ports)<br/><b>0 al 1,023</b><br/>Servicios estándar del sistema"] --> P2["Puertos Registrados<br/>(Registered Ports)<br/><b>1,024 al 49,151</b><br/>Aplicaciones comerciales"] --> P3["Puertos Dinámicos / Privados<br/>(Ephemeral Ports)<br/><b>49,152 al 65,535</b><br/>Clientes salientes"]
+    
+    style P1 fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style P2 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style P3 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 #### A. Puertos Bien Conocidos (Well-Known Ports: 0 a 1,023)
@@ -122,22 +125,46 @@ Un número de puerto es un entero sin signo de **16 bits**, lo que da un rango p
 
 ### 5. Relación Matemática entre MTU y MSS
 
-```text
-+-------------------------------------------------------------------------------+
-|                             MTU ETHERNET = 1500 Bytes                         |
-+--------------------------+--------------------------+-------------------------+
-| Encabezado IPv4 (20 B)   | Encabezado TCP (20 B)    | MSS TCP = 1460 Bytes    |
-+--------------------------+--------------------------+-------------------------+
+```mermaid
+flowchart TD
+    subgraph MTU_Block ["MTU ETHERNET = 1500 Bytes"]
+        direction LR
+        IP_H["Encabezado IPv4<br/><b>20 Bytes</b>"]
+        TCP_H["Encabezado TCP<br/><b>20 Bytes</b>"]
+        MSS_D["Carga Útil de Aplicación (MSS)<br/><b>1460 Bytes</b>"]
+    end
+    
+    style MTU_Block fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style IP_H fill:#1e293b,stroke:#f59e0b,stroke-width:1px,color:#fff
+    style TCP_H fill:#1e293b,stroke:#8b5cf6,stroke-width:1px,color:#fff
+    style MSS_D fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 1. **MTU (Maximum Transmission Unit):** Límite físico impuesto por la Capa de Enlace (Ethernet estándar = 1,500 bytes).
 2. **MSS (Maximum Segment Size):** Tamaño máximo de **datos útiles de aplicación** que un emisor TCP puede meter dentro de un segmento individual sin que el paquete IP resultante deba ser fragmentado en la Capa 3:
    $$MSS = \text{MTU} - \text{Longitud Encabezado IP} - \text{Longitud Encabezado TCP}$$
-   $$MSS_{\text{estándar}} = 1500 - 20 - 20 = 1460 \text{ bytes}$$
+   $$MSS_{\text{estándar}} = 1500 - 20 - 20 = \mathbf{1460 \text{ bytes}}$$
 
 ---
 
-### 6. Preguntas Avanzadas de Examen (Tipo UMG)
+### 6. Mecanismo de Comunicación Cliente-Servidor
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as PC Cliente (192.168.1.50)
+    participant Servidor as Servidor Web (200.10.1.5)
+    
+    Note over Cliente: Abre navegador web (Pide IP:Puerto efímero)
+    Cliente->>Servidor: Petición HTTP (Origen: 192.168.1.50:54321 -> Destino: 200.10.1.5:80)
+    Note over Servidor: Procesa página index.html
+    Servidor->>Cliente: Respuesta HTTP (Origen: 200.10.1.5:80 -> Destino: 192.168.1.50:54321)
+    Note over Cliente: Entrega respuesta a la pestaña asociada al puerto 54321
+```
+
+---
+
+### 7. Preguntas Avanzadas de Examen (Tipo UMG)
 
 **P1: ¿Puede un servidor con una sola dirección IP pública atender a más de 65,535 clientes simultáneos en el puerto 443?**
 > **R:** **Sí, rotundamente.** Los 65,535 puertos limitan la cantidad de servicios locales o puertos efímeros de una sola máquina, pero las conexiones se diferencian por la **4-tupla**. Dado que cada cliente tiene una dirección IP distinta y un puerto de origen distinto, un solo socket de escucha en `IP_Servidor:443` puede mantener abiertas cientos de miles de conexiones concurrentes en memoria RAM.

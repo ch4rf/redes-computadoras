@@ -5,37 +5,43 @@
 ### 1. El Mapa Completo de Encapsulamiento y Desencapsulamiento
 Una de las fallas más comunes en exámenes de redes es estudiar las capas como islas desconectadas. En la realidad de la ingeniería, **ninguna capa puede operar sin los servicios y límites de las capas inferiores**.
 
-A continuación se muestra cómo se empaqueta la información desde el clic del usuario hasta los electrones o fotones en el cable:
+A continuación se muestra cómo se empaqueta la información desde el clic del usuario hasta los electrones o pulsos de luz en el cable:
 
-```text
-+----------------------------------------------------------------------------------------------------+
-| CAPA 7: APLICACIÓN (HTTP, DNS, DHCP, SSH)                                                          |
-| Datos Puros de la Aplicación (ej. Mensaje HTTP GET /index.html)                                     |
-+----------------------------------------------------------------------------------------------------+
-                                      |
-                                      v Encapsulación en Capa de Transporte (agrega Puerto Origen y Destino)
-+-------------------------------------+--------------------------------------------------------------+
-| Encabezado TCP (20 bytes)           | DATOS DE APLICACIÓN (Carga Útil / Payload)                  |
-+-------------------------------------+--------------------------------------------------------------+
-| <----------------------------- SEGMENTO TCP (Unidad de Capa 4) ----------------------------------> |
-                                      |
-                                      v Encapsulación en Capa de Red (agrega IP Origen y Destino)
-+--------------------------+----------+--------------------------------------------------------------+
-| Encabezado IP (20 bytes) | TCP Hdr  | DATOS DE APLICACIÓN                                          |
-+--------------------------+----------+--------------------------------------------------------------+
-| <------------------------------- PAQUETE IP (Unidad de Capa 3) ----------------------------------> |
-                                      |
-                                      v Encapsulación en Capa de Enlace (agrega MACs y Checksum CRC)
-+-------------------+----------+----------+----------------------------------------------+-----------+
-| Cabecera Ethernet | IP Hdr   | TCP Hdr  | DATOS DE APLICACIÓN                          | Cola FCS  |
-| (14 bytes)        |          |          |                                              | (4 bytes) |
-+-------------------+----------+----------+----------------------------------------------+-----------+
-| <-------------------------------- TRAMA ETHERNET (Capa 2) ---------------------------------------> |
-                                      |
-                                      v Codificación en Capa Física (Voltajes o Pulsos de Luz)
-+----------------------------------------------------------------------------------------------------+
-| 01101001 01110100 01100101 01101101 (Bits / Señales en Cobre UTP o Fibra Óptica - Capa 1)         |
-+----------------------------------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    subgraph D_L7 ["1. Capa de Aplicación (Capa 7)"]
+        Data["Datos de Aplicación<br/><b>HTTP GET /index.html</b>"]
+    end
+
+    subgraph D_L4 ["2. Capa de Transporte (Capa 4 - Segmento TCP)"]
+        direction LR
+        TCP_H["Encabezado TCP (20 B)<br/>Puertos Origen/Destino + Seq/Ack"] --- TCP_P["Carga Útil de Aplicación"]
+    end
+
+    subgraph D_L3 ["3. Capa de Red (Capa 3 - Paquete IP)"]
+        direction LR
+        IP_H["Encabezado IP (20 B)<br/>IP Origen/Destino"] --- IP_P["Segmento TCP Completo"]
+    end
+
+    subgraph D_L2 ["4. Capa de Enlace (Capa 2 - Trama Ethernet)"]
+        direction LR
+        ETH_H["Cabecera Ethernet (14 B)<br/>MAC Origen / MAC Destino"] --- ETH_P["Paquete IP"] --- ETH_F["Cola FCS (4 B)<br/>Checksum CRC32"]
+    end
+
+    subgraph D_L1 ["5. Capa Física (Capa 1 - Señales)"]
+        Bits["Bits: 01101001 01110100...<br/>Voltajes en Cobre UTP Cat 6 o Pulsos de Luz en Fibra Óptica"]
+    end
+
+    D_L7 -->|"Encapsula con Puertos"| D_L4
+    D_L4 -->|"Encapsula con IPs"| D_L3
+    D_L3 -->|"Encapsula con MACs y CRC"| D_L2
+    D_L2 -->|"Codifica a Medios Físicos"| D_L1
+
+    style D_L7 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style D_L4 fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#fff
+    style D_L3 fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#fff
+    style D_L2 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style D_L1 fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
 ```
 
 ---
@@ -44,11 +50,17 @@ A continuación se muestra cómo se empaqueta la información desde el clic del 
 ¿Por qué un archivo descargado por Internet viaja típicamente en bloques de **1,460 bytes**? La respuesta demuestra la interconexión directa entre Cableado, Enlace, Red y Transporte:
 
 ```mermaid
-graph TD
-    L1["Capa 1: Cable UTP Cat 6 / Fibra<br/>Impone estándar Ethernet IEEE 802.3"] --> L2["Capa 2: MTU Máxima de Ethernet = 1500 Bytes<br/>Tamaño máximo de carga útil que la tarjeta de red puede transmitir"]
-    L2 --> L3["Capa 3: Encabezado IPv4 = 20 Bytes fijos<br/>Espacio restante para datos: 1500 - 20 = 1480 Bytes"]
+flowchart TD
+    L1["Capa 1: Cable UTP Cat 6 / Fibra Óptica<br/>Impone estándar Ethernet IEEE 802.3"] --> L2["Capa 2: MTU Máxima de Ethernet = 1500 Bytes<br/>Tamaño máximo de carga útil que la tarjeta de red puede transmitir"]
+    L2 --> L3["Capa 3: Encabezado IPv4 = 20 Bytes fijos<br/>Espacio restante para transporte: 1500 - 20 = 1480 Bytes"]
     L3 --> L4["Capa 4: Encabezado TCP = 20 Bytes fijos<br/>MSS (Maximum Segment Size) = 1480 - 20 = 1460 Bytes"]
     L4 --> L7["Capa 7: La aplicación web o transferencia de archivo solo puede<br/>inyectar hasta 1460 Bytes netos por segmento sin fragmentar"]
+
+    style L1 fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style L2 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style L3 fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#fff
+    style L4 fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#fff
+    style L7 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
 ```
 
 #### Fórmulas de Relación Inter-Capa:

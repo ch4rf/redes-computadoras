@@ -7,17 +7,13 @@
 
 UDP (*User Datagram Protocol*) es el epítome de la simplicidad y el rendimiento en redes. Fue diseñado bajo el principio *End-to-End*: la red intermedia y la capa de transporte no deben gastar ciclos de CPU en verificar estados o reordenar datos; si la aplicación necesita confiabilidad, que la programe ella misma.
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Source Port          |       Destination Port        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|            Length             |           Checksum            |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                             Data                              |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
+El encabezado UDP tiene una longitud inmutable de **8 bytes** (64 bits), dividido en 4 campos exactos de 16 bits:
+
+| Fila de 32 Bits | Bits 0 – 15 | Bits 16 – 31 |
+| :---: | :--- | :--- |
+| **Palabra 1 (Bytes 0-3)** | **Puerto de Origen** (*Source Port* - 16 bits) | **Puerto de Destino** (*Destination Port* - 16 bits) |
+| **Palabra 2 (Bytes 4-7)** | **Longitud del Datagrama** (*Length* - 16 bits) | **Checksum** (*Suma de verificación* - 16 bits) |
+| **Carga Útil** | **Datos de la Aplicación** (Longitud variable: 0 a 65,527 bytes) | |
 
 ---
 
@@ -28,26 +24,31 @@ Una de las preguntas teóricas más sutiles y elegantes de examen es:
 
 Para calcular el Checksum de 16 bits, el emisor construye un **Pseudo-Encabezado IP conceptual** de 12 bytes que se antepone temporalmente al encabezado UDP:
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       Source IP Address                       |  <- Capa 3
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Destination IP Address                     |  <- Capa 3
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|     Zeros     |   Protocol    |          UDP Length           |  <- Proto 17 (0x11)
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Source Port          |       Destination Port        |  <- Capa 4
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|            Length             |          0x0000 (Temp)        |  <- Capa 4
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                             Data                              |  <- Capa 7
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```mermaid
+flowchart TD
+    subgraph PSEUDO ["1. Pseudo-Encabezado IP (12 Bytes de Capa 3 - Solo para cálculo)"]
+        direction LR
+        P_SRC["IP Origen (32 bits)"] --- P_DST["IP Destino (32 bits)"] --- P_PROTO["Ceros (8b) + Proto 17 (8b) + Longitud UDP (16b)"]
+    end
+
+    subgraph UDP_HDR ["2. Encabezado UDP Real (8 Bytes de Capa 4)"]
+        direction LR
+        U_SRC["Puerto Origen (16b)"] --- U_DST["Puerto Destino (16b)"] --- U_LEN["Longitud (16b)"] --- U_CHK["Checksum 0x0000 (16b)"]
+    end
+
+    subgraph UDP_DATA ["3. Carga Útil de Aplicación (Capa 7)"]
+        U_PAYLOAD["Datos de Aplicación (DNS, DHCP, VoIP, etc.) + Byte 0x00 si es impar"]
+    end
+
+    PSEUDO --> UDP_HDR --> UDP_DATA
+
+    style PSEUDO fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style UDP_HDR fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style UDP_DATA fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 #### Algoritmo del Checksum (Complemento a 1 de 16 bits):
-1. Se unen todos los bloques de 16 bits del Pseudo-Encabezado, el Encabezado UDP y los Datos (agregando un byte de relleno `0x00` al final si la longitud es impar).
+1. Se unen todos los bloques de 16 bits del Pseudo-Encabezado, el Encabezado UDP y los Datos (agregando un byte de relleno `0x00` al final si la longitud total en bytes es impar).
 2. Se suman en aritmética de complemento a 1 (si hay acarreo, se suma al bit menos significativo).
 3. Se invierten todos los bits (operación NOT binaria) y el resultado se escribe en el campo *Checksum*.
 4. **Propósito de ingeniería:** Si un router defectuoso altera la dirección IP de destino o el número de protocolo en la Capa 3, el receptor de Capa 4 detecta la corrupción al verificar el checksum y descarta el paquete antes de entregarlo a una aplicación errónea.

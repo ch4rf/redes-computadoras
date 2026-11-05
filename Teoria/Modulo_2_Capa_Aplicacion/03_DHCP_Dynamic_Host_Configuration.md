@@ -5,39 +5,24 @@
 
 ### 1. Anatomía Binaria de la Trama DHCP / BOOTP (RFC 2131)
 
-DHCP es una extensión directa del protocolo histórico **BOOTP**. Su formato de mensaje encapsulado en UDP (puertos 67 servidor / 68 cliente) tiene una longitud mínima de **240 bytes** más el campo de opciones:
+DHCP es una extensión directa del protocolo histórico **BOOTP**. Su formato de mensaje encapsulado en UDP (puertos 67 servidor / 68 cliente) tiene una longitud mínima de **240 bytes** más el campo de opciones.
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|     op (1)    |   htype (1)   |   hlen (1)    |   hops (1)    |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                            xid (4)                            |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|           secs (2)            |           flags (2)           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          ciaddr (4)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          yiaddr (4)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          siaddr (4)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          giaddr (4)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                                                               |
-|                          chaddr (16)                          |
-|                                                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          sname (64)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                          file (128)                           |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                       Magic Cookie (4)                        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Options (Variable Length)                  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
+En una cuadrícula de **32 bits**, sus campos se distribuyen de la siguiente forma:
+
+| Fila de 32 Bits | Bytes 0 – 1 | Bytes 2 – 3 |
+| :---: | :--- | :--- |
+| **Palabra 1 (Bytes 0-3)** | `op` (1B: 1=Req, 2=Reply) \| `htype` (1B) | `hlen` (1B: MAC=6) \| `hops` (1B) |
+| **Palabra 2 (Bytes 4-7)** | **Transaction ID (`xid`)** (4 bytes completos) | |
+| **Palabra 3 (Bytes 8-11)**| **Seconds elapsed (`secs`)** (2B) | **Flags de difusión** (2B: Broadcast Flag) |
+| **Palabra 4 (Bytes 12-15)**| **Client IP Address (`ciaddr`)** (4 bytes completos - IP actual si renueva) | |
+| **Palabra 5 (Bytes 16-19)**| **Your IP Address (`yiaddr`)** (4 bytes completos - IP ofrecida por servidor) | |
+| **Palabra 6 (Bytes 20-23)**| **Next Server IP (`siaddr`)** (4 bytes completos - Servidor TFTP/PXE) | |
+| **Palabra 7 (Bytes 24-27)**| **Relay Gateway IP (`giaddr`)** (4 bytes completos - IP del router DHCP Relay) | |
+| **Bytes 28 – 43** | **Client Hardware Address (`chaddr`)** (16 bytes - Dirección MAC física) | |
+| **Bytes 44 – 107** | **Server Host Name (`sname`)** (64 bytes opcionales) | |
+| **Bytes 108 – 235**| **Boot File Name (`file`)** (128 bytes opcionales para arranque en red) | |
+| **Bytes 236 – 239**| **Magic Cookie** (`0x63 0x82 0x53 0x63` - 4 bytes fijos que inician las opciones) | |
+| **Bytes 240+** | **Opciones DHCP** (Tipo de mensaje, Máscara, Gateway, DNS, Lease Time) | |
 
 #### Descripción Rigurosa de Campos de Examen:
 1. **`op` (Message Opcode - 1 byte):** `1` = BOOTREQUEST (enviado por cliente); `2` = BOOTREPLY (enviado por servidor).
@@ -53,9 +38,30 @@ DHCP es una extensión directa del protocolo histórico **BOOTP**. Su formato de
 
 ---
 
-### 2. Matriz de Estados de Campos en el Proceso DORA
+### 2. El Ciclo de Concesión: El Proceso DORA
 
-Para sacar 100 en un examen de análisis de tramas, memoriza qué valores llevan estos campos en cada uno de los 4 pasos:
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Cliente as Cliente (PC sin IP)
+    participant Servidor as Servidor DHCP
+    
+    Note over Cliente: IP Origen: 0.0.0.0 | IP Destino: 255.255.255.255<br/>UDP 68 -> UDP 67
+    Cliente->>Servidor: 1. DHCP DISCOVER (Broadcast)
+    
+    Note over Servidor: Selecciona IP disponible del pool y reserva
+    Servidor->>Cliente: 2. DHCP OFFER (Broadcast o Unicast)
+    
+    Note over Cliente: Acepta formalmente la oferta
+    Cliente->>Servidor: 3. DHCP REQUEST (Broadcast)
+    
+    Note over Servidor: Confirma concesión e inicia temporizador
+    Servidor->>Cliente: 4. DHCP ACK (Broadcast o Unicast)
+    
+    Note over Cliente: Aplica IP, Máscara, Gateway y DNS a la tarjeta NIC
+```
+
+#### Matriz de Estados de Campos en el Proceso DORA:
 
 | Campo del Paquete | 1. DHCP DISCOVER | 2. DHCP OFFER | 3. DHCP REQUEST | 4. DHCP ACK |
 | :--- | :---: | :---: | :---: | :---: |
@@ -83,7 +89,24 @@ Dado que DHCP no incluye autenticación nativa, las redes locales son vulnerable
 * **Efecto:** Todo el tráfico bancario, contraseñas y correos de los usuarios pasa a través de la computadora del atacante antes de salir a Internet.
 
 #### C. La Solución Cisco: DHCP Snooping
-Característica de seguridad de Capa 2 configurada en los Switches Cisco que clasifica los puertos físicos en dos categorías:
+
+```mermaid
+flowchart TD
+    subgraph SWITCH ["Switch Capa 2 con DHCP Snooping"]
+        direction LR
+        TP["Puerto de Confianza (Trusted Port)<br/>Hacia Servidor DHCP Legítimo / Router<br/><b>PERMITE Offers y ACKs</b>"]
+        UP["Puertos No Confiables (Untrusted Ports)<br/>Hacia Usuarios Finales / PCs<br/><b>BLOQUEA Offers y ACKs falsos</b>"]
+    end
+
+    TP <--> S_REAL["Servidor DHCP Real"]
+    UP --> PC_USER["PC Usuario Legítimo"]
+    UP x--x ATTACKER["Atacante (Servidor Rogue)"]
+
+    style TP fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style UP fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style SWITCH fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+```
+
 1. **Trusted Ports (Puertos de Confianza):** Puertos conectados hacia el servidor DHCP legítimo o enlaces troncales hacia el Router. Se les permite reenviar todos los mensajes DHCP.
 2. **Untrusted Ports (Puertos No Confiables):** Todos los puertos de acceso donde se conectan usuarios finales. **El switch descarta y bloquea automáticamente cualquier mensaje `DHCP Offer` o `DHCP ACK` que provenga de un puerto no confiable**, impidiendo la existencia de servidores DHCP piratas.
 3. **DHCP Snooping Binding Database:** El switch construye una tabla segura en memoria que mapea `MAC + IP Asignada + Puerto Físico + VLAN`, la cual sirve como base para evitar ataques de suplantación de ARP (*Dynamic ARP Inspection - DAI*).

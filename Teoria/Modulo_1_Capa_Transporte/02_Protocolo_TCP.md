@@ -5,29 +5,16 @@
 
 ### 1. Anatomía y Campos Críticos del Encabezado TCP (RFC 793)
 
-El encabezado TCP tiene una longitud fija mínima de **20 bytes** (hasta 60 bytes con opciones).
+El encabezado TCP tiene una longitud fija mínima de **20 bytes** (hasta 60 bytes si incluye opciones). En una cuadrícula de **32 bits de ancho**, los campos se distribuyen de la siguiente forma:
 
-```text
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Source Port          |       Destination Port        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                        Sequence Number                        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Acknowledgment Number                      |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|  Data |           |U|A|P|R|S|F|                               |
-| Offset| Reserved  |R|C|S|S|Y|I|            Window             |
-|       |           |G|K|H|T|N|N|                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|           Checksum            |        Urgent Pointer         |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                    Options                    |    Padding    |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                             Data                              |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-```
+| Fila de 32 Bits | Bits 0 – 15 | Bits 16 – 31 |
+| :---: | :--- | :--- |
+| **Palabra 1 (Bytes 0-3)** | **Puerto de Origen** (*Source Port* - 16 bits) | **Puerto de Destino** (*Destination Port* - 16 bits) |
+| **Palabra 2 (Bytes 4-7)** | **Número de Secuencia** (*Sequence Number* - 32 bits completos) | |
+| **Palabra 3 (Bytes 8-11)**| **Número de Reconocimiento** (*Acknowledgment Number* - 32 bits completos) | |
+| **Palabra 4 (Bytes 12-15)**| **Data Offset** (4b) \| **Reservado** (6b) \| **Flags** (`URG,ACK,PSH,RST,SYN,FIN` - 6b) | **Tamaño de Ventana** (*Window Size* - 16 bits) |
+| **Palabra 5 (Bytes 16-19)**| **Checksum** (16 bits) | **Puntero Urgente** (*Urgent Pointer* - 16 bits) |
+| **Palabra 6+ (Opcional)**| **Opciones de TCP** (0 a 40 bytes: MSS, Window Scale, SACK) + Relleno (*Padding*) | |
 
 #### Análisis Profundo de Campos de Control:
 * **Sequence Number (32 bits):** Si el flag `SYN` está activo (1), este es el **ISN (Initial Sequence Number)** generado aleatoriamente. Si `SYN` es 0, es el número de secuencia acumulado del primer byte de datos del segmento.
@@ -49,30 +36,42 @@ El encabezado TCP tiene una longitud fija mínima de **20 bytes** (hasta 60 byte
 En exámenes de ingeniería y preguntas de certificación, los estados de TCP son evaluados rigurosamente:
 
 ```mermaid
-stateDiagram-v2
-    [*] --> CLOSED
-    CLOSED --> LISTEN : Servidor abre socket pasivo
-    CLOSED --> SYN_SENT : Cliente envía SYN
-    
-    LISTEN --> SYN_RECEIVED : Servidor recibe SYN y envía SYN-ACK
-    SYN_SENT --> ESTABLISHED : Cliente recibe SYN-ACK y envía ACK
-    SYN_RECEIVED --> ESTABLISHED : Servidor recibe ACK del cliente
-    
-    note right of ESTABLISHED : FASE DE TRANSMISIÓN DE DATOS BIDIRECCIONAL
-    
-    ESTABLISHED --> FIN_WAIT_1 : Host A envía FIN (cierre activo)
-    ESTABLISHED --> CLOSE_WAIT : Host B recibe FIN y envía ACK (cierre pasivo)
-    
-    FIN_WAIT_1 --> FIN_WAIT_2 : Host A recibe ACK del FIN
-    FIN_WAIT_1 --> CLOSING : Cierre simultáneo (recibe FIN antes del ACK)
-    
-    CLOSE_WAIT --> LAST_ACK : Host B envía su propio FIN
-    LAST_ACK --> CLOSED : Host B recibe ACK final
-    
-    FIN_WAIT_2 --> TIME_WAIT : Host A recibe FIN del Host B y envía ACK
-    CLOSING --> TIME_WAIT : Recibe ACK
-    
-    TIME_WAIT --> CLOSED : Espera temporizador 2MSL (60 a 120 segundos)
+flowchart TD
+    CLOSED["CLOSED (Estado Inicial)"]
+    LISTEN["LISTEN (Servidor espera conexión)"]
+    SYN_SENT["SYN_SENT (Cliente envió SYN)"]
+    SYN_RCVD["SYN_RECEIVED (Servidor envió SYN-ACK)"]
+    ESTAB["ESTABLISHED (Conexión Abierta - Transmisión de Datos)"]
+
+    CLOSED -->|"Servidor abre socket pasivo"| LISTEN
+    CLOSED -->|"Cliente envía SYN"| SYN_SENT
+    LISTEN -->|"Recibe SYN, envía SYN-ACK"| SYN_RCVD
+    SYN_SENT -->|"Recibe SYN-ACK, envía ACK"| ESTAB
+    SYN_RCVD -->|"Recibe ACK del cliente"| ESTAB
+
+    subgraph CIERRE_ACTIVO ["Cierre Activo (Iniciado por Host A)"]
+        FIN_WAIT_1["FIN_WAIT_1 (Envió FIN)"]
+        FIN_WAIT_2["FIN_WAIT_2 (Recibió ACK del FIN)"]
+        TIME_WAIT["TIME_WAIT (Espera 2MSL: 60-120s)"]
+    end
+
+    subgraph CIERRE_PASIVO ["Cierre Pasivo (Receptor Host B)"]
+        CLOSE_WAIT["CLOSE_WAIT (Recibió FIN, envió ACK)"]
+        LAST_ACK["LAST_ACK (Envió su propio FIN)"]
+    end
+
+    ESTAB -->|"Host A envía FIN"| FIN_WAIT_1
+    ESTAB -->|"Host B recibe FIN"| CLOSE_WAIT
+    FIN_WAIT_1 -->|"Host A recibe ACK"| FIN_WAIT_2
+    CLOSE_WAIT -->|"Host B envía FIN"| LAST_ACK
+    FIN_WAIT_2 -->|"Host A recibe FIN, envía ACK final"| TIME_WAIT
+    LAST_ACK -->|"Host B recibe ACK final"| CLOSED
+    TIME_WAIT -->|"Expira temporizador 2MSL"| CLOSED
+
+    style CLOSED fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style LISTEN fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style ESTAB fill:#1e293b,stroke:#10b981,stroke-width:3px,color:#fff
+    style TIME_WAIT fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
 ```
 
 #### Tabla de Referencia de los 11 Estados:
@@ -108,10 +107,15 @@ TCP mantiene una variable interna llamada **cwnd (Congestion Window)** que mide 
 $$\text{Ventana Efectiva} = \min(\text{cwnd}, \text{Window Size del Receptor})$$
 
 ```mermaid
-graph LR
-    A["Fase 1: Slow Start<br/>(Crecimiento Exponencial)"] -->|Alcanza ssthresh| B["Fase 2: Congestion Avoidance<br/>(Crecimiento Lineal)"]
-    B -->|Pérdida por 3 ACKs duplicados| C["Fast Retransmit & Fast Recovery<br/>(Corte a la mitad de ssthresh)"]
-    B -->|Pérdida por Timeout RTO| A
+flowchart LR
+    A["Fase 1: Slow Start<br/><b>(Crecimiento Exponencial)</b>"] -->|"Alcanza umbral ssthresh"| B["Fase 2: Congestion Avoidance<br/><b>(Crecimiento Lineal AIMD)</b>"]
+    B -->|"Pérdida por 3 ACKs Duplicados"| C["Fast Retransmit & Fast Recovery<br/><b>(ssthresh = cwnd / 2)</b>"]
+    B -->|"Pérdida Severa por Timeout RTO"| A
+    C --> B
+
+    style A fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style B fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style C fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
 ```
 
 #### A. Arranque Lento (Slow Start)

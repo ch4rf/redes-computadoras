@@ -1,82 +1,96 @@
 # Módulo 2: Capa de Aplicación
-## Tema 2.5: Servicios Críticos de Infraestructura (FTP, SSH y Correo con SPF/DKIM/DMARC)
+## Tema 2.5: Transferencia de Archivos, Terminal Remota y Correo Electrónico
 
 ---
 
-### 1. El Dilema de FTP a través de Firewalls y NAT (Modo Activo vs. Pasivo)
+### 📖 Mini Diccionario para Empezar
 
-FTP es uno de los protocolos más antiguos de Internet (RFC 959). Su diseño de doble canal genera serios conflictos con los firewalls modernos si no se comprende su arquitectura:
-
-#### A. Modo Activo (Active FTP)
-1. El cliente se conecta desde un puerto dinámico `N` hacia el **puerto 21 TCP del servidor** (Canal de Control) y envía el comando:  
-   `PORT IP_Cliente, Puerto_Datos_M` (donde $M = N+1$).
-2. Para transmitir los datos, **el servidor inicia una conexión TCP inversa desde su puerto 20 TCP hacia el puerto M del cliente**.
-* **Falla clásica en examen:** Si el cliente está detrás de un router doméstico o firewall con NAT (como casi todos hoy en día), **el firewall del cliente bloquea la conexión entrante del servidor en el puerto M**, considerándola un ataque no solicitado. El comando `LIST` o la descarga se congela indefinidamente.
-
-#### B. Modo Pasivo (Passive FTP - PASV)
-1. El cliente se conecta al puerto 21 del servidor y envía el comando `PASV`.
-2. El servidor abre un puerto dinámico no privilegiado en su propio sistema (ej. `Puerto 49500`) y se lo envía al cliente.
-3. **El cliente es quien inicia la conexión de datos** hacia el puerto `49500` del servidor.
-* **Ventaja:** Como ambas conexiones (control y datos) son iniciadas hacia afuera por el cliente, los firewalls con seguimiento de estado (*Stateful Inspection*) permiten la salida sin problemas. Es el modo configurado por defecto en todos los navegadores y clientes modernos como FileZilla.
+* **Acceso Remoto / Terminal:** Entrar a controlar una computadora, router o switch a través de una pantalla negra de comandos desde tu casa sin tener que estar físicamente parado frente a la máquina.
+* **Texto Plano (Plaintext):** Texto normal sin protección; cualquiera que lo mire con un programa espía lo puede leer de inmediato.
+* **Cifrado:** Texto protegido matemáticamente que solo tú y la otra máquina pueden descifrar.
+* **Protocolo Push (Empujar):** Mandar cosas hacia adelante (como enviar un correo).
+* **Protocolo Pull (Jalar):** Descargar o jalar cosas que están guardadas esperándote en un buzón.
 
 ---
 
-### 2. Criptografía en SSH (Secure Shell - Puerto 22 TCP)
+### 1. Transferencia de Archivos: FTP vs. TFTP
 
-SSH reemplazó a Telnet y a los comandos Berkeley r-services (`rlogin`, `rsh`) porque garantiza confidencialidad, integridad y autenticación mutua mediante un esquema criptográfico híbrido:
+| Característica | FTP (File Transfer Protocol) | TFTP (Trivial File Transfer Protocol) |
+| :--- | :--- | :--- |
+| **La Analogía** | **Un Camión de Mudanzas Profesional:** Con chofer calificado, lista de inventario firmada y candado con llave. | **Lanzar una piedra con una nota:** Muy liviano y rápido, sin identificaciones ni inventario. |
+| **Protocolo Capa 4** | **TCP** (Orientado a conexión, confiable). | **UDP** (Sin conexión, sin confirmación). |
+| **Puertos de Red** | **Puerto 21 (Control) y Puerto 20 (Datos)**. | **Puerto 69**. |
+| **¿Pide Contraseña?** | **Sí**, requiere usuario y contraseña. | **No**, no tiene autenticación. |
+| **Uso Principal** | Subir páginas web a un servidor o compartir archivos entre empresas. | Cargar o respaldar el sistema operativo de red (**Cisco IOS**) en routers y switches. |
+
+---
+
+### 2. Acceso Remoto por Terminal: Telnet vs. SSH
+
+Imagina que estás en tu casa y necesitas entrar a configurar un Router de la UMG:
+
+```mermaid
+flowchart TD
+    subgraph INSEGURO ["TELNET (Puerto 23 TCP) - Peligroso"]
+        PC1["Tu Laptop"] -->|"Escribes: 'enable', Password: 'cisco'"| Hacker["Espía con Wireshark<br/><b>(Lee tu contraseña tal cual en pantalla)</b>"] --> Router1["Router Cisco"]
+    end
+
+    subgraph SEGURO ["SSH (Puerto 22 TCP) - Seguro"]
+        PC2["Tu Laptop"] -->|"Escribes: '#!9x$Q81L...'"| Espia["Espía en el cable<br/><b>(Solo ve caracteres basura cifrados)</b>"] --> Router2["Router Cisco"]
+    end
+
+    style INSEGURO fill:#0f172a,stroke:#ef4444,stroke-width:2px,color:#fff
+    style SEGURO fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
+```
+
+* **Telnet (Puerto 23 TCP):** Es antiquísimo. Manda todo en texto plano. **Prohibido usarlo en la vida real** porque cualquiera en la red puede robarte las contraseñas de los switches y routers.
+* **SSH - Secure Shell (Puerto 22 TCP):** Cifra absolutamente toda la sesión. Es el **estándar mundial obligatorio** para administrar equipos Cisco, servidores Linux y routers.
+
+---
+
+### 3. El Correo Electrónico: ¿Cómo viaja un mensaje?
+
+El correo electrónico no funciona con un solo protocolo; necesita un protocolo para **enviar** y otro protocolo para **recibir**:
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Cliente as Administrador / Cliente SSH
-    participant Servidor as Servidor Linux / Router Cisco
+    actor Emisor as Tú (Escribes el correo)
+    participant ServidorMio as Tu Servidor de Correo
+    participant ServidorAmigo as Servidor de Correo de tu Amigo
+    actor Receptor as Tu Amigo (Lee el correo)
     
-    Note over Cliente,Servidor: 1. Negociación e Intercambio Diffie-Hellman
-    Cliente->>Servidor: TCP Handshake Puerto 22 + Intercambio de versiones
-    Servidor->>Cliente: Clave Pública del Host (Host Key)
-    Note over Cliente: Comprueba si la clave está en el archivo local ~/.ssh/known_hosts
-    Note over Cliente,Servidor: Ejecutan Diffie-Hellman para generar una CLAVE DE SESIÓN SIMÉTRICA secreta
+    Note over Emisor,ServidorAmigo: FASE DE ENVÍO (Protocolo PUSH: SMTP)
+    Emisor->>ServidorMio: SMTP (Puerto 25 / 587): "Envía este correo"
+    ServidorMio->>ServidorAmigo: SMTP (Puerto 25): "Te entrego este correo para tu usuario"
     
-    Note over Cliente,Servidor: 2. Canal Cifrado Activo (Cifrado Simétrico AES-GCM)
-    Cliente->>Servidor: Envía credenciales (Contraseña o Firma con Clave Privada ~/.ssh/id_rsa)
-    Servidor->>Cliente: Acceso concedido (Shell interactiva cifrada)
+    Note over ServidorAmigo,Receptor: FASE DE DESCARGA (Protocolo PULL: POP3 o IMAP)
+    Receptor->>ServidorAmigo: IMAP (Puerto 143) o POP3 (Puerto 110): "¿Tengo correos nuevos?"
+    ServidorAmigo->>Receptor: Entrega el correo a su bandeja de entrada
 ```
 
-1. **Autenticación del Servidor (`known_hosts`):** Evita ataques *Man-in-the-Middle*. Si la huella digital (*fingerprint*) del servidor cambia repentinamente, SSH emite la famosa alerta roja: `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!`.
-2. **Intercambio Diffie-Hellman:** Permite que cliente y servidor acuerden una clave secreta compartida a través de un canal inseguro sin que nadie que espíe el cable pueda deducirla.
-3. **Cifrado de Sesión:** Tras acordar la clave secreta, todo el tráfico (comandos, contraseñas, salidas de terminal) se cifra con algoritmos simétricos ultra veloces como **AES-256-GCM** o **ChaCha20-Poly1305**.
+#### A. Protocolo de Envío: SMTP (Simple Mail Transfer Protocol)
+* **¿Qué hace?** Es el cartero. Empuja el correo desde tu computadora hacia tu servidor, y de tu servidor al servidor del destinatario.
+* **Puertos:** Puerto **25 TCP** (entre servidores) y puerto **587 TCP** (cuando mandas un correo desde tu celular con clave).
+
+#### B. Protocolos de Recepción: POP3 vs. IMAP (La Gran Diferencia)
+
+* **POP3 (Puerto 110 TCP - Descarga y Borra):**
+  * Funciona como el casillero físico de tu casa: el cartero deja la carta, tú abres el casillero, te llevas la carta a tu mesa y **el casillero queda vacío**.
+  * Si lees el correo en tu computadora de escritorio, se descarga a tu disco duro y se borra de Internet. Cuando más tarde abras tu celular, **¡el correo ya no estará!**.
+* **IMAP (Puerto 143 TCP - Sincronizado en la Nube):**
+  * Funciona como una vitrina de exhibición: el correo se queda guardado para siempre en el servidor.
+  * Si abres el correo en tu computadora, tu teléfono y tu tablet saben al mismo tiempo que ya lo leíste. Si creas una carpeta en tu celular, aparece automáticamente en tu computadora. **Es el protocolo que usamos todos hoy en día.**
 
 ---
 
-### 3. El Trío de Seguridad del Correo Electrónico (SPF, DKIM y DMARC)
+### 4. Preguntas Típicas de Examen
 
-El protocolo de envío de correo **SMTP (Puerto 25/587)** no tiene ningún mecanismo para verificar la identidad del emisor; cualquiera puede enviar un paquete SMTP afirmando ser `rectoria@umg.edu.gt`. Para evitar el fraude y la suplantación (*Spoofing*), se utilizan tres tecnologías combinadas en el DNS:
+**P1: ¿Cuál es la diferencia principal entre Telnet y SSH?**
+> **R:** Telnet envía toda la información (incluyendo contraseñas) en texto plano sin cifrar por el puerto 23 TCP, mientras que SSH cifra completamente toda la sesión de terminal por el puerto 22 TCP.
 
-```mermaid
-flowchart TD
-    MTA["Servidor de Correo Receptor<br/>Recibe email: From: rectoria@umg.edu.gt"] --> SPF["1. Consulta SPF en DNS<br/>¿La IP del servidor emisor está en la lista blanca TXT?"]
-    MTA --> DKIM["2. Consulta DKIM en DNS<br/>¿La firma criptográfica del correo coincide con la clave pública?"]
-    SPF --> DMARC["3. Validación de Política DMARC en DNS<br/>¿Qué hacer si falla SPF o DKIM?<br/>(p=none, p=quarantine o p=reject)"]
-    DKIM --> DMARC
-    DMARC --> DECISION["Decisión Final:<br/>Bandeja de Entrada, Carpeta Spam o Rechazo Total"]
+**P2: Si un usuario quiere revisar sus correos desde varios dispositivos a la vez sin perder mensajes, ¿qué protocolo debe configurar?**
+> **R:** Debe configurar **IMAP** (puerto 143 TCP), ya que mantiene los correos y carpetas sincronizados centralmente en el servidor, a diferencia de POP3 que los descarga y los borra localmente.
 
-    style MTA fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
-    style SPF fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style DKIM fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
-    style DMARC fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
-    style DECISION fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
-```
-
-1. **SPF (Sender Policy Framework - Registro TXT en DNS):**  
-   El dueño del dominio publica una lista de las únicas direcciones IP autorizadas para enviar correos en su nombre:
-   ```text
-   umg.edu.gt.  IN  TXT  "v=spf1 ip4:200.10.15.25 include:_spf.google.com -all"
-   ```
-   *(El `-all` indica que cualquier servidor que no esté en esa lista debe ser rechazado).*
-2. **DKIM (DomainKeys Identified Mail - Criptografía Asimétrica):**  
-   El servidor emisor firma digitalmente el cuerpo del correo con su clave privada y añade el encabezado `DKIM-Signature`. El servidor receptor busca la clave pública correspondiente en el registro DNS del emisor y valida que el correo no fue alterado en tránsito.
-3. **DMARC (Domain-based Message Authentication, Reporting, and Conformance):**  
-   Le dice al servidor de destino qué política aplicar si fallan SPF o DKIM:
-   * `p=none`: Solo monitorear y generar reportes.
-   * `p=quarantine`: Enviar el correo sospechoso a la carpeta de Spam / Correo no deseado.
-   * `p=reject`: Rechazar y destruir el correo inmediatamente a nivel de servidor SMTP.
+**P3: ¿Qué protocolo de transferencia de archivos utiliza UDP en el puerto 69 y no requiere autenticación?**
+> **R:** El protocolo **TFTP** (Trivial File Transfer Protocol).

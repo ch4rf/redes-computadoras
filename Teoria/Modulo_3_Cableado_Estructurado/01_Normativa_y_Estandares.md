@@ -1,80 +1,71 @@
 # Módulo 3: Cableado Estructurado
-## Tema 3.1: Normativa y Estándares Internacionales (ANSI / TIA / EIA / ISO)
+## Tema 3.1: Normativa y Estándares de Cableado (Explicado desde Cero)
 
 ---
 
-### 1. ¿Qué es el Cableado Estructurado?
-El **Cableado Estructurado** es una infraestructura de telecomunicaciones unificada, estandarizada y modular instalada dentro de un edificio o campus. Permite transmitir voz, datos, video y sistemas de control mediante un único sistema físico planificado, eliminando el desorden de cables individuales propietarios.
+### 📖 Mini Diccionario para Empezar
+
+* **Cableado Estructurado:** Es la forma ordenada, limpia y estandarizada de meter cables en un edificio para que sirvan durante 15 o 20 años para computadoras, teléfonos, cámaras y servidores, sin que parezca un nido de pájaros desordenado.
+* **Canaleta / Tubería Conduit:** Los tubos plásticos o metálicos que van pegados a la pared o escondidos en el cielo falso por donde viajan los cables protegidos del polvo y los roedores.
+* **Topología en Estrella:** Significa que todos los cables de un piso viajan hacia un único punto central (como las puntas de una estrella hacia el centro). No se permite conectar cables en serie como luces de árbol navideño.
+* **TIA / EIA / ANSI:** Organizaciones de ingenieros que se reunieron para escribir las "leyes y reglas del juego" de cómo instalar cables en el mundo para que los equipos de cualquier marca (Cisco, HP, Dell) funcionen igual de bien.
 
 ---
 
-### 2. Principales Organismos de Estandarización
+### 1. ¿Por qué necesitamos normas de cableado?
 
-* **ANSI (American National Standards Institute):** Organización sin fines de lucro que supervisa y acredita el desarrollo de normas voluntarias en los Estados Unidos.
-* **TIA (Telecommunications Industry Association):** Asociación comercial que desarrolla estándares para equipos de telecomunicaciones y tecnologías de la información.
-* **EIA (Electronic Industries Alliance):** Antigua alianza de organizaciones comerciales electrónicas (acreditó los estándares junto con TIA).
-* **ISO / IEC (International Organization for Standardization / International Electrotechnical Commission):** Organismos globales; emiten la norma internacional equivalente **ISO/IEC 11801**.
-* **IEEE (Institute of Electrical and Electronics Engineers):** Define estándares de capa de enlace y física de redes locales (ej. IEEE 802.3 para Ethernet).
+Imagina que contratas a dos electricistas diferentes para cablear un edificio de 4 pisos:
+* Uno mete cables baratos sin protección.
+* El otro pasa los cables de red pegados a los motores de los elevadores y a los cables de alta tensión de 220V, lo que genera una interferencia electromagnética que bota el Internet cada vez que alguien sube por el ascensor.
+* Nadie etiquetó los cables: cuando una computadora falla, tienes que jalar cables a ciegas entre 500 cables idénticos de color azul.
 
----
-
-### 3. Las Cuatro Normas Clave de Examen (Familia TIA/EIA)
-
-En evaluaciones de redes y proyectos de infraestructura física de telecomunicaciones, debes memorizar cuatro normas primordiales:
+Para evitar ese desastre, existen cuatro normas oficiales de la familia **ANSI/TIA/EIA** que debes memorizar para tu examen:
 
 ```mermaid
 flowchart TD
-    subgraph NORMAS ["Familia de Normas ANSI/TIA/EIA para Telecomunicaciones"]
-        A["<b>ANSI/TIA/EIA-568</b><br/>Requisitos Generales de Cableado, Componentes y Topología en Estrella"]
-        B["<b>ANSI/TIA/EIA-569</b><br/>Rutas y Espacios (Ductos, Canaletas al 40% de llenado y Cuartos Técnicos)"]
-        C["<b>ANSI/TIA/EIA-606</b><br/>Administración, Codificación Única y Etiquetado de Infraestructura"]
-        D["<b>ANSI/TIA/EIA-607</b><br/>Puesta a Tierra y Aterrizaje Eléctrico (Barras TMGB / TGB)"]
+    subgraph NORMAS ["Las 4 Normas de Cableado Obligatorias"]
+        N568["<b>ANSI/TIA/EIA-568</b><br/>¿Cómo deben ser los cables, conectores y distancias?<br/>(Exige topología en Estrella y límite de 100 metros)"]
+        N569["<b>ANSI/TIA/EIA-569</b><br/>¿Cómo deben ser los cuartos técnicos, tuberías y canaletas?<br/>(Regla del 40% de llenado máximo)"]
+        N606["<b>ANSI/TIA/EIA-606</b><br/>¿Cómo etiquetar e identificar cada cable y toma de pared?<br/>(Para que nada quede anónimo)"]
+        N607["<b>ANSI/TIA/EIA-607</b><br/>¿Cómo conectar los racks a tierra física?<br/>(Para que un rayo o sobrecarga no queme los switches)"]
     end
 
     style NORMAS fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
-    style A fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
-    style B fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style C fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
-    style D fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
+    style N568 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style N569 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style N606 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style N607 fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
 ```
-
-#### A. ANSI/TIA/EIA-568: Alambrado de Telecomunicaciones para Edificios Comerciales
-* **Propósito:** Especifica los requisitos mínimos de componentes, topología, distancias, rendimientos y tipos de cable para oficinas y edificios.
-* **Subdivisión moderna:**
-  * **568.0:** Cableado genérico para instalaciones de clientes.
-  * **568.1:** Cableado de infraestructura para edificios comerciales.
-  * **568.2:** Componentes y cableado de par trenzado de cobre (*Balanced Twisted-Pair*).
-  * **568.3:** Componentes de cableado de fibra óptica.
-* **Regla de oro:** Dicta la **topología obligatoria en Estrella Jerárquica** y el límite de **100 metros** en el canal horizontal.
-
-#### B. ANSI/TIA/EIA-569: Rutas y Espacios de Telecomunicaciones
-* **Propósito:** Estandariza el diseño arquitectónico de ductos, bandejas portacables, tuberías conduit, piso falso, cielo falso y los cuartos técnicos (MDF, IDF).
-* **Reglas de diseño clave:**
-  * **Factor de ocupación de tubería / canaleta:** Un ducto o canalización no debe llenarse a más del **40% de su capacidad en la instalación inicial**, permitiendo hasta un máximo de **60% para crecimiento futuro**.
-  * No más de **dos curvas de 90 grados** (180 grados acumulados) continuas en un tramo de tubería conduit sin colocar una caja de paso (*Pull Box*).
-  * Los cuartos de telecomunicaciones deben tener piso antiestático, iluminación adecuada (mínimo 500 lux a 1 metro sobre el suelo), temperatura controlada (18°C a 24°C) y humedad relativa entre 30% y 55%.
-
-#### C. ANSI/TIA/EIA-606: Administración y Etiquetado de Infraestructura
-* **Propósito:** Define cómo etiquetar e identificar de forma única e inequívoca cada elemento de la red: cables, tomas de pared, puertos de patch panel, gabinetes, racks y rutas.
-* **Niveles de administración (Clases 1 a 4):** Desde edificios de una sola habitación hasta campus multi-edificios.
-* **Requisito práctico:** Toda toma de pared (*Faceplate*) debe tener una etiqueta que indique a qué cuarto técnico (TR/IDF), rack, patch panel y número de puerto exacto se conecta (ej. `IDF1-RK01-PP02-P14`).
-
-#### D. ANSI/TIA/EIA-607: Puesta a Tierra y Aterrizaje para Telecomunicaciones
-* **Propósito:** Requisitos de conexión a tierra para proteger al personal y a los equipos de descargas electrostáticas, corrientes parásitas y transitorios electromagnéticos.
-* **Componentes principales:**
-  * **TMGB (Telecommunications Main Grounding Busbar):** Barra principal de tierra ubicada en la entrada o MDF.
-  * **TGB (Telecommunications Grounding Busbar):** Barra de tierra secundaria en cada cuarto de telecomunicaciones (IDF), unida a la TMGB mediante un conductor de cobre grueso (Backbone de tierra / TBB).
-  * Todos los racks metálicos, gabinetes, patch panels blindados y bandejas metálicas deben estar aterrizados a la barra TGB.
 
 ---
 
-### 4. Preguntas Clave de Examen (Tipo UMG)
+### 2. Las Reglas Prácticas de Cada Norma (Lo que pregunta el catedrático)
 
-**P1: ¿Cuál es la norma que rige el diseño de canalizaciones, tuberías y cuartos de cómputo?**
-> **R:** La norma **ANSI/TIA/EIA-569**.
+#### A. Norma ANSI/TIA/EIA-568 (Reglas de Cableado)
+1. **Topología Obligatoria en Estrella Jerárquica:** Cada toma de pared de una oficina debe tener su propio cable exclusivo que viaje directo al cuarto de telecomunicaciones de su piso. Prohibido puentear cables.
+2. **Límite Sagrado de 100 Metros:** La distancia total desde la computadora hasta el switch nunca debe pasar de 100 metros (90 metros en la pared + 10 metros en cables cortos).
 
-**P2: ¿Cuál es el porcentaje máximo de ocupación inicial recomendado para una canaleta o ducto según TIA-569?**
-> **R:** Máximo **40% de ocupación inicial** (para permitir hasta un 60% en expansiones futuras).
+#### B. Norma ANSI/TIA/EIA-569 (Rutas, Tuberías y Espacios)
+1. **La Regla del 40% de Ocupación de Canaletas:** Al momento de instalar una canaleta o ducto de plástico, los cables solo deben ocupar hasta el **40% del espacio interior**. El 60% restante debe quedar vacío para ventilación y para poder meter más cables en el futuro si la empresa crece.
+2. **Máximo 2 curvas de 90° continuas:** En un tubo cerrado no puedes hacer más de 2 vueltas de 90 grados seguidas sin poner una caja de paso de metal; de lo contrario, el cable se atasca y se rompe al jalarlo.
+3. **Condiciones del cuarto técnico:** Debe tener aire acondicionado entre 18°C y 24°C, buena iluminación y puerta con llave.
 
-**P3: ¿Qué topología física exige la norma TIA/EIA-568 para el cableado estructurado?**
-> **R:** Exige una **topología en Estrella Jerárquica** (todo cable horizontal debe llegar a un único punto central de consolidación o Patch Panel).
+#### C. Norma ANSI/TIA/EIA-606 (Etiquetado y Administración)
+* Todo cable, toma de pared y puerto de switch debe tener una etiqueta impresa legible.
+* Si una toma de pared dice `P1-RK1-PP2-14`, cualquier técnico sabe al instante: *"Piso 1, Rack 1, Patch Panel 2, Puerto 14"*, ahorrando horas de búsqueda.
+
+#### D. Norma ANSI/TIA/EIA-607 (Aterrizaje y Tierra Física)
+* Toda la infraestructura metálica (los racks de metal donde se atornillan los switches, las bandejas portacables del techo) debe estar conectada mediante cables de cobre verde a una barra de tierra principal (**TMGB**) para desviar descargas estáticas y rayos a la tierra sin dañar los aparatos electrónicos.
+
+---
+
+### 3. Preguntas Típicas de Examen
+
+**P1: ¿Cuál es el porcentaje máximo de ocupación inicial permitido en una canaleta según la norma TIA-569?**
+> **R:** Máximo **40% de ocupación inicial** (para dejar un 60% de holgura para expansiones futuras).
+
+**P2: ¿Qué topología física exige la norma TIA-568 para el cableado estructurado?**
+> **R:** Exige una **topología en Estrella Jerárquica**.
+
+**P3: ¿Qué norma define el código de etiquetado e identificación de tomas y cables?**
+> **R:** La norma **ANSI/TIA/EIA-606**.

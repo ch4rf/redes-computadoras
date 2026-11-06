@@ -1,61 +1,86 @@
 # Módulo 2: Capa de Aplicación
-## Tema 2.4: Evolución de Protocolos Web (HTTP/1.1, HTTP/2, HTTP/3 y Cifrado TLS 1.3)
+## Tema 2.4: Servicios Web (HTTP, HTTPS y Códigos de Error Explicados Fácil)
 
 ---
 
-### 1. La Evolución Histórica de la Web: Del Texto Plano al Transporte Binario
+### 📖 Mini Diccionario para Empezar
 
-| Parámetro | HTTP/1.0 (1996) | HTTP/1.1 (1997 - RFC 2616/7230) | HTTP/2 (2015 - RFC 7540) | HTTP/3 (2022 - RFC 9114) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Transporte Capa 4** | TCP | TCP | TCP | **QUIC sobre UDP** |
-| **Manejo de Conexiones** | 1 conexión TCP por cada objeto individual (Cierre inmediato tras recibir) | **Persistent Connections (`Keep-Alive`)** y *Pipelining* teórico | **1 sola conexión TCP multiplexada** para todos los recursos del dominio | Conexión UDP única independiente de cambios de IP/red |
-| **Formato de Mensaje** | Texto plano legible | Texto plano legible | **Binario estructurado (Frames)** | **Binario estructurado (Frames QPACK)** |
-| **Compresión de Cabeceras**| Ninguna | Ninguna | **HPACK** (Diccionario dinámico de cabeceras) | **QPACK** (Adaptado para evitar bloqueos en UDP) |
-| **Bloqueo Head-of-Line**| Crítico | **Presente en Capa de Aplicación** (peticiones en fila FIFO) | Resuelto en Capa de Aplicación, pero **presente en Capa de Transporte TCP** | **Completamente Eliminado** en todas las capas |
+* **HTTP (HyperText Transfer Protocol):** El protocolo para cargar páginas web en texto plano sin seguridad.
+* **HTTPS (HTTP Secure):** Lo mismo, pero envuelto en una capa de seguridad y cifrado (**TLS/SSL**) para que nadie pueda espiar lo que haces.
+* **Cifrado:** Convertir un texto legible (como tu contraseña *"umg2026"*) en un revoltijo incomprensible de letras y números (`a8F#9x!z01...`) para que solo el destinatario con la clave matemática pueda leerlo.
+* **Certificado Digital:** El "DPI" o pasaporte digital de un sitio web. Garantiza que cuando entras a tu banco realmente estás en la máquina del banco y no en la de un estafador.
+* **Código de Estado (Status Code):** Un número de 3 dígitos que el servidor te devuelve para decirte si tu petición tuvo éxito o qué fue lo que falló.
 
 ---
 
-### 2. El Problema del Bloqueo Head-of-Line (HoL Blocking) y cómo se resolvió
+### 1. HTTP vs. HTTPS: La Postal vs. La Caja Fuerte
 
-Este es el concepto arquitectónico más preguntado en cursos avanzados de redes:
-
-#### A. En HTTP/1.1 (Bloqueo en Capa de Aplicación):
-* Aunque `Keep-Alive` permitía reutilizar el socket TCP sin cerrarlo, las peticiones debían responderse en estricto orden secuencial (**FIFO**).
-* Si una página web solicita un archivo HTML, un script pesado `script.js` y 10 imágenes, y el procesamiento del `script.js` tarda 2 segundos en el servidor, **las 10 imágenes quedan totalmente congeladas en cola** esperando que termine el script.
-* *Solución improvisada de los navegadores:* Abrir hasta 6 conexiones TCP simultáneas en paralelo por dominio, lo que multiplicaba el consumo de memoria en los servidores.
-
-#### B. En HTTP/2 (Multiplexación Binaria sobre 1 Conexión TCP):
-* Divide los mensajes en fragmentos binarios llamados **Frames** (marcardos con un *Stream ID*).
-* Permite intercalar imágenes, CSS y scripts sobre el mismo socket TCP sin esperar a que termine el anterior.
-* **El nuevo problema (HoL en Capa de Transporte):** Si en la red intermedia de Internet se pierde un solo paquete TCP (un fragmento de una imagen), **el stack TCP del kernel congela todo el búfer de recepción** para retransmitir ese fragmento perdido, frenando a todos los demás *streams* independientes.
-
-#### C. En HTTP/3 (QUIC sobre UDP):
-* Al abandonar TCP y correr sobre datagramas UDP, cada *stream* es completamente independiente a nivel de transporte. Si se pierde un paquete del *stream* de la imagen, el navegador sigue reproduciendo el audio y renderizando el texto sin ningún retraso.
-
----
-
-### 3. Cifrado TLS: Comparativa del Handshake TLS 1.2 vs. TLS 1.3
-
-HTTPS utiliza **TLS (Transport Layer Security)**. La versión **TLS 1.3 (RFC 8446)** revolucionó la seguridad al eliminar algoritmos criptográficos débiles y reducir a la mitad la latencia de conexión:
+| Parámetro | HTTP (No Seguro) | HTTPS (Seguro y Cifrado) |
+| :--- | :--- | :--- |
+| **Puerto Estándar** | **Puerto 80 TCP** | **Puerto 443 TCP** |
+| **La Analogía** | **Una Tarjeta Postal:** Cualquier cartero, empleado del ISP o persona conectada a tu mismo Wi-Fi puede leer lo que escribiste en el camino. | **Una Caja Fuerte con Candado:** Solo el servidor y tú tienen la llave. Quien espíe el cable solo verá datos ilegibles. |
+| **En el Navegador** | Muestra una advertencia roja: *"Sitio no seguro"*. | Muestra un **candadito gris o verde** de conexión segura. |
+| **Uso actual** | Obsoleto. Casi prohibido en sitios reales. | **Obligatorio** en todo Internet (bancos, redes sociales, correo). |
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    participant Cliente as Navegador Cliente
-    participant Servidor as Servidor Web Seguro
-    
-    Note over Cliente,Servidor: TLS 1.2: Requiere 2 RTTs de negociación criptográfica
-    Cliente->>Servidor: ClientHello (Lista de Cipher Suites soportados)
-    Servidor->>Cliente: ServerHello + Certificado Digital + ServerKeyExchange
-    Cliente->>Servidor: ClientKeyExchange + [ChangeCipherSpec] + Finished
-    Servidor->>Cliente: [ChangeCipherSpec] + Finished (Listo para enviar datos)
-    
-    Note over Cliente,Servidor: TLS 1.3: Requiere solo 1 RTT (o 0-RTT en reconexión)
-    Cliente->>Servidor: ClientHello + Propuesta de Claves Diffie-Hellman (Adivina el cifrado)
-    Servidor->>Cliente: ServerHello + Certificado + Finished + Su parte de Diffie-Hellman
-    Note over Cliente,Servidor: Cifrado activo inmediatamente. El cliente ya envía el HTTP GET
+flowchart TD
+    subgraph INSEGURO ["HTTP Normal (Puerto 80 TCP) - Texto Claro"]
+        PC1["Tu PC"] -->|"Envía: 'User: admin, Pass: 1234'"| Hacker["Espía con Wireshark<br/>(Lee tu contraseña tal cual)"] --> Server1["Servidor Web"]
+    end
+
+    subgraph SEGURO ["HTTPS Seguro (Puerto 443 TCP) - Cifrado TLS"]
+        PC2["Tu PC"] -->|"Envía: 'x8#K9$pL!02q&Z...'"| EspiaCiego["Espía en el cable<br/>(Solo ve caracteres basura)"] --> Server2["Servidor Web<br/>(Descifra con su llave)"]
+    end
+
+    style INSEGURO fill:#0f172a,stroke:#ef4444,stroke-width:2px,color:#fff
+    style SEGURO fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
-* **TLS 1.2:** Demoraba **2 RTT completos** solo para acordar la clave de cifrado (sumados al 1 RTT previo del Three-Way Handshake TCP, totalizaba **3 RTTs** antes de enviar el primer byte útil).
-* **TLS 1.3:** Reduce la negociación a **1 solo RTT** al enviar las propuestas criptográficas (*Key Share*) en el mismo primer mensaje `ClientHello`.
-* **0-RTT Resumption (Early Data):** Si el cliente ya había visitado el sitio web previamente, puede enviar datos de aplicación cifrados en el mismísimo primer paquete de la conexión, logrando carga instantánea.
+---
+
+### 2. Los Métodos HTTP (Lo que le pides al servidor que haga)
+
+Cuando tu navegador habla con el servidor web, utiliza pequeños comandos llamados **Métodos o Verbos**:
+
+* **`GET` (Dame):** Pide un recurso sin modificar nada. Cuando entras a ver una foto o leer una noticia, tu navegador hace un `GET`.
+* **`POST` (Toma y guarda):** Envía información al servidor para procesarla. Cuando escribes tu usuario y contraseña en el login y presionas *"Iniciar Sesión"*, tu navegador hace un `POST`.
+* **`PUT` (Actualiza):** Reemplaza un archivo existente por uno nuevo.
+* **`DELETE` (Borra):** Solicita eliminar un recurso del servidor.
+
+---
+
+### 3. Los Códigos de Estado Explicados con la Vida Real
+
+Cuando el servidor te responde, incluye un código de 3 dígitos. La primera cifra te dice la categoría del resultado:
+
+```mermaid
+flowchart LR
+    C2["2xx: ¡Éxito!<br/>Todo salió perfecto"] --> C3["3xx: Redirección<br/>La tienda se mudó"] --> C4["4xx: Error Tuyo<br/>(Error del Cliente)"] --> C5["5xx: Error de Ellos<br/>(Error del Servidor)"]
+
+    style C2 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+    style C3 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style C4 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style C5 fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+```
+
+#### Los Códigos Fijos de Examen:
+* **`200 OK`:** ¡Todo perfecto! El servidor encontró la página y te la muestra en pantalla.
+* **`301 Moved Permanently`:** La página se mudó de dirección para siempre. El navegador te lleva automáticamente a la nueva dirección web.
+* **`401 Unauthorized`:** El guardia te detiene en la puerta: *"Debes ingresar tu usuario y contraseña primero"*.
+* **`403 Forbidden`:** El guardia sabe quién eres, pero te dice: *"Tú no tienes permiso de entrar a esta oficina restringida"*.
+* **`404 Not Found` (El más famoso de Internet):** Escribiste mal la dirección web o la página fue borrada del servidor. El archivo no existe.
+* **`500 Internal Server Error`:** Al cocinero se le quemó la cocina. El servidor web falló internamente por un error de programación o base de datos.
+* **`503 Service Unavailable`:** El servidor está saturado con demasiados usuarios a la vez o está apagado por mantenimiento temporal.
+
+---
+
+### 4. Preguntas Típicas de Examen
+
+**P1: ¿Qué puerto y protocolo de transporte utiliza una conexión HTTPS segura?**
+> **R:** Utiliza el puerto **443** sobre el protocolo **TCP**.
+
+**P2: ¿Cuál es la diferencia entre un código de error `404` y un código de error `500`?**
+> **R:** El error `404 Not Found` es un error del cliente (el archivo o URL solicitada no existe en el servidor). El error `500 Internal Server Error` es un error del servidor (la máquina falló internamente al procesar la solicitud).
+
+**P3: ¿Qué método HTTP se utiliza cuando un usuario llena un formulario con su contraseña y hace clic en "Ingresar"?**
+> **R:** El método **POST** (porque envía datos en el cuerpo del mensaje para ser procesados por el servidor).

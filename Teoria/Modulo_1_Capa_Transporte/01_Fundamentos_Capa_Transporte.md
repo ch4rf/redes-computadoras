@@ -1,176 +1,180 @@
 # Módulo 1: Capa de Transporte
-## Tema 1.1: Fundamentos de la Capa de Transporte y Modelo de Sockets
+## Tema 1.1: Fundamentos de la Capa de Transporte y Modelo de Sockets (Desde Cero)
 
 ---
 
-### 1. Propósito y Función Principal en la Pila de Protocolos
-La **Capa de Transporte** es la cuarta capa del modelo de referencia OSI y el corazón funcional de la pila TCP/IP.
+### 📖 Mini Diccionario para Empezar (Sin Palabras Raras)
+
+Antes de ver cualquier fórmula o diagrama, entendamos las palabras que siempre repiten los ingenieros:
+
+* **Host (Dispositivo o Anfitrión):** Es cualquier computadora, celular, servidor o laptop conectada a la red.
+* **Dirección IP (Internet Protocol):** Es como la dirección de tu casa en el mundo real (ejemplo: *"Calle 5, Zona 10, Edificio Los Robles"*). Le dice a Internet a qué máquina exacta deben viajar los datos.
+* **Proceso / Aplicación:** Es un programa que está corriendo en la memoria de tu computadora (ejemplo: Google Chrome, Spotify, WhatsApp, o un juego).
+* **Puerto de Red:** Es como el número de apartamento dentro del edificio. La IP encuentra el edificio (tu computadora), pero el **Puerto** encuentra la puerta del apartamento exacto (el programa que pidió los datos).
+* **Socket (Enchufe lógico):** Es la unión de la IP + el Puerto (ejemplo: `192.168.1.15:80`). Es como escribir en una carta: *"Edificio Los Robles, Apartamento 80"*.
+* **Segmento / Paquete:** Un trozo pequeño de un archivo. Si quieres enviar una foto de 10 MB, la computadora la corta en miles de pedacitos pequeños para enviarlos uno por uno.
+
+---
+
+### 1. ¿Qué es la Capa de Transporte y qué problema resuelve?
+
+Imagina este problema real:
+Estás en tu computadora y tienes abiertas **tres cosas al mismo tiempo**:
+1. Un video de YouTube en Google Chrome.
+2. Una llamada de voz con tus amigos en Discord.
+3. La aplicación de Spotify reproduciendo música.
+
+Todos esos datos entran a tu computadora por **un solo cable de red** (o por una sola antena Wi-Fi).
+
+**La gran pregunta:**  
+Cuando un pedazo de información llega desde el cable a tu tarjeta de red, **¿cómo sabe la computadora si ese pedacito es un segundo de video de YouTube, un segundo de voz de Discord o una canción de Spotify?**
+
+La respuesta es: **La Capa de Transporte**.
 
 ```mermaid
 flowchart TD
-    subgraph L7 ["CAPA DE APLICACIÓN (Capa 7)"]
-        A1["Procesos de Usuario en Ejecución<br/>(Navegador Web, Spotify, Discord, Correo)"]
+    subgraph APPS ["Tus Programas Abiertos (Capa de Aplicación - Capa 7)"]
+        Chrome["Google Chrome<br/>(Viendo YouTube)"]
+        Discord["Discord<br/>(Llamada de voz)"]
+        Spotify["Spotify<br/>(Música)"]
     end
 
-    L7 -->|"ENTREGA PROCESO A PROCESO<br/>(Identificación por Números de Puerto)"| L4
-
-    subgraph L4 ["CAPA DE TRANSPORTE (Capa 4)"]
-        T1["TCP (Orientado a Conexión) / UDP (No Orientado)<br/>Multiplexación, Segmentación y Búferes"]
+    subgraph TRANSPORTE ["Capa de Transporte (Capa 4)"]
+        Mux["El 'Conserje Repartidor'<br/>(Revisa el número de puerto y entrega a la app correcta)"]
     end
 
-    L4 -->|"ENTREGA HOST A HOST<br/>(Enrutamiento por Direcciones IP)"| L3
-
-    subgraph L3 ["CAPA DE RED (Capa 3)"]
-        R1["IPv4 / IPv6<br/>Direccionamiento Lógico Global"]
+    subgraph RED ["Capa de Red (Capa 3 - Dirección IP)"]
+        IP["Tu Computadora en Internet<br/>(IP: 192.168.1.50)"]
     end
 
-    style L7 fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
-    style L4 fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#fff
-    style L3 fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#fff
+    IP --> TRANSPORTE
+    TRANSPORTE -->|"Puerto 54120"| Chrome
+    TRANSPORTE -->|"Puerto 50012"| Discord
+    TRANSPORTE -->|"Puerto 52300"| Spotify
+
+    style APPS fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style TRANSPORTE fill:#1e293b,stroke:#818cf8,stroke-width:2px,color:#fff
+    style RED fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#fff
 ```
 
-* **Diferencia crítica de examen con la Capa de Red (Capa 3):**
-  * **Capa 3 (IP):** Ofrece una entrega **Host-to-Host** (de máquina a máquina). Se encarga del enrutamiento a través de la topología mundial de Internet, pero es completamente ciega respecto a qué programa o pestaña dentro del host solicitó los datos.
-  * **Capa 4 (TCP/UDP):** Proporciona una entrega **Process-to-Process** (de proceso a proceso). Mapea los paquetes que llegan a la tarjeta de red directamente al hilo de ejecución o proceso en memoria RAM que los está esperando mediante **Números de Puerto**.
+#### La diferencia de oro para tu examen:
+* **Capa 3 (Red - Dirección IP):** Hace la entrega **Host-to-Host** (de máquina a máquina). Se encarga de que la carta llegue a la computadora correcta, pero no le importa qué programa la pidió.
+* **Capa 4 (Transporte - Números de Puerto):** Hace la entrega **Process-to-Process** (de proceso a proceso). Toma la carta que llegó a la computadora y se la entrega en la mano al programa que la estaba esperando.
 
 ---
 
-### 2. Responsabilidades Arquitectónicas de la Capa 4
+### 2. La Gran Analogía del Edificio de Apartamentos
 
-#### A. Seguimiento de Conversaciones Individuales (Multiplexación)
-En cualquier momento, un usuario puede tener abiertas decenas de pestañas web, una llamada de Teams, un juego en línea y un cliente de correo. La Capa de Transporte garantiza que los paquetes de la llamada no se mezclen con el código HTML de la página web mediante el mecanismo de **Multiplexación** (en el emisor) y **Demultiplexación** (en el receptor).
+Para entender qué es un **Socket**, piensa en cómo te llega una carta a domicilio:
 
-#### B. Segmentación y Reensamblado
-* Los medios físicos de transmisión (como Ethernet o Wi-Fi) tienen un límite en la cantidad de bytes que pueden transportar en un solo frame (llamado **MTU - Maximum Transmission Unit**, usualmente **1,500 bytes**).
-* La capa de transporte divide los flujos continuos de datos de la capa de aplicación en bloques discretos llamados **Segmentos** (en TCP) o **Datagramas** (en UDP).
-* En el host receptor, la capa de transporte recibe cada bloque, valida su integridad y los reensambla en el orden exacto para entregarlos a la aplicación como un flujo transparente.
-
-#### C. Búferes del Kernel del Sistema Operativo
-A nivel de sistema operativo (Linux, Windows, macOS), la capa de transporte gestiona dos áreas de memoria RAM por cada conexión:
-1. **Send Buffer (Búfer de Envío):** Almacena los datos escritos por la aplicación hasta que la tarjeta de red pueda transmitirlos y el receptor confirme su recepción con un ACK.
-2. **Receive Buffer (Búfer de Recepción):** Almacena los segmentos que llegan desde la red hasta que la aplicación tenga tiempo de procesarlos con llamadas del sistema (como `recv()` o `read()`).
-
----
-
-### 3. Modelo de Sockets y Comunicación Bidireccional
-
-#### Definición Formal de Socket
-Un **Socket** es una abstracción de software del sistema operativo que representa el extremo final de un canal de comunicación bidireccional de red. Matemáticamente se define como la tupla:
-
-$$\text{Socket} = (\text{Dirección IP}, \text{Número de Puerto})$$
-
-#### El Par de Sockets (Socket Pair o 4-Tupla)
-Para que exista una sesión de comunicación activa en Internet, se requiere identificar unívocamente ambos extremos mediante una **4-tupla**:
-
-$$\text{4-Tupla} = (\text{IP Origen}, \text{Puerto Origen}, \text{IP Destino}, \text{Puerto Destino})$$
-
-* **Caso de Estudio Real:**
-  * Servidor Web de la UMG: `200.10.15.42:443`
-  * Tu PC en tu casa: `190.56.20.100`
-  * Si abres dos pestañas simultáneas hacia el mismo servidor web:
-    * **Pestaña 1:** `(190.56.20.100 : 54201)` $\longleftrightarrow$ `(200.10.15.42 : 443)`
-    * **Pestaña 2:** `(190.56.20.100 : 54202)` $\longleftrightarrow$ `(200.10.15.42 : 443)`
-  * *Conclusión de examen:* El servidor web responde a ambas pestañas en el mismo puerto `443`, pero el sistema operativo de tu PC sabe exactamente a qué pestaña entregar los datos gracias al **Puerto de Origen efímero** único generado por el navegador.
-
----
-
-### 4. Clasificación Rigurosa de Puertos según IANA (16 Bits = 65,536 Puertos)
-
-Un número de puerto es un entero sin signo de **16 bits**, lo que da un rango posible de $0$ a $2^{16}-1$ ($0$ a $65,535$).
+$$\begin{aligned}
+\text{Dirección de la Calle} &\longleftrightarrow \text{Dirección IP (Encuentra tu computadora)} \\
+\text{Número de Apartamento} &\longleftrightarrow \text{Número de Puerto (Encuentra tu programa)} \\
+\text{Dirección Completa (Calle + Depto)} &\longleftrightarrow \textbf{Socket (IP + Puerto)}
+\end{aligned}$$
 
 ```mermaid
 flowchart LR
-    P1["Puertos Bien Conocidos<br/>(Well-Known Ports)<br/><b>0 al 1,023</b><br/>Servicios estándar del sistema"] --> P2["Puertos Registrados<br/>(Registered Ports)<br/><b>1,024 al 49,151</b><br/>Aplicaciones comerciales"] --> P3["Puertos Dinámicos / Privados<br/>(Ephemeral Ports)<br/><b>49,152 al 65,535</b><br/>Clientes salientes"]
-    
-    style P1 fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
-    style P2 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style P3 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
-```
-
-#### A. Puertos Bien Conocidos (Well-Known Ports: 0 a 1,023)
-* Reservados para servicios universales y estandarizados por la IANA mediante RFCs.
-* En sistemas Unix/Linux, solo el superusuario (`root`) puede abrir un socket de escucha en estos puertos por razones de seguridad.
-
-| Puerto | Protocolo Capa 4 | Servicio / Nombre | Función Principal |
-| :---: | :---: | :--- | :--- |
-| **20 / 21** | TCP | **FTP** | Transferencia de archivos (20 Datos / 21 Control). |
-| **22** | TCP | **SSH** | Shell segura, acceso remoto cifrado y SFTP. |
-| **23** | TCP | **Telnet** | Terminal remota en texto plano (obsoleto por inseguro). |
-| **25** | TCP | **SMTP** | Envío y retransmisión de correo electrónico. |
-| **53** | UDP / TCP | **DNS** | Resolución de nombres de dominio (UDP consultas / TCP zonas). |
-| **67 / 68** | UDP | **DHCP / BOOTP** | Configuración dinámica de red (67 Servidor / 68 Cliente). |
-| **69** | UDP | **TFTP** | Transferencia trivial de archivos sin autenticación. |
-| **80** | TCP | **HTTP** | Protocolo de transferencia de hipertexto (Web no segura). |
-| **110** | TCP | **POP3** | Descarga y borrado de correos electrónicos. |
-| **123** | UDP | **NTP** | Sincronización horaria de precisión en servidores y routers. |
-| **143** | TCP | **IMAP** | Sincronización de correos electrónicos en servidor. |
-| **161 / 162**| UDP | **SNMP** | Monitoreo y gestión de infraestructura de red. |
-| **443** | TCP | **HTTPS** | Web segura cifrada mediante TLS/SSL. |
-
-#### B. Puertos Registrados (Registered Ports: 1,024 a 49,151)
-* Asignados por IANA a petición de empresas o desarrolladores para aplicaciones propietarias o estándares de la industria:
-  * **1433 TCP:** Microsoft SQL Server.
-  * **1521 TCP:** Base de Datos Oracle.
-  * **3306 TCP:** MySQL / MariaDB.
-  * **3389 TCP:** RDP (Remote Desktop Protocol de Microsoft).
-  * **5060 / 5061 UDP/TCP:** SIP (Session Initiation Protocol para telefonía IP VoIP).
-  * **8080 TCP:** Servidor web alternativo / Proxies HTTP (Tomcat, Spring, Node.js en desarrollo).
-
-#### C. Puertos Dinámicos, Privados o Efímeros (Dynamic / Ephemeral Ports: 49,152 a 65,535)
-* Son asignados automáticamente por la pila de red del sistema operativo a las aplicaciones cliente que inician conexiones salientes.
-* Su ciclo de vida es temporal: se crean al invocar la conexión y se destruyen poco después de cerrarla.
-* **Agotamiento de Puertos Efímeros (*Ephemeral Port Exhaustion*):** En servidores proxy de alto rendimiento con miles de conexiones salientes por segundo, si se agotan estos puertos (~16,384 puertos disponibles), las nuevas peticiones fallan inmediatamente con errores de conexión.
-
----
-
-### 5. Relación Matemática entre MTU y MSS
-
-```mermaid
-flowchart TD
-    subgraph MTU_Block ["MTU ETHERNET = 1500 Bytes"]
-        direction LR
-        IP_H["Encabezado IPv4<br/><b>20 Bytes</b>"]
-        TCP_H["Encabezado TCP<br/><b>20 Bytes</b>"]
-        MSS_D["Carga Útil de Aplicación (MSS)<br/><b>1460 Bytes</b>"]
+    subgraph ANALOGIA ["La Analogía del Correo"]
+        Edificio["Edificio de Apartamentos<br/>(Dirección IP: 200.10.15.42)"]
+        Depto80["Apartamento 80<br/>(Servicio Web HTTP)"]
+        Depto443["Apartamento 443<br/>(Servicio Web Seguro HTTPS)"]
+        Depto22["Apartamento 22<br/>(Acceso Remoto SSH)"]
+        
+        Edificio --> Depto80
+        Edificio --> Depto443
+        Edificio --> Depto22
     end
-    
-    style MTU_Block fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
-    style IP_H fill:#1e293b,stroke:#f59e0b,stroke-width:1px,color:#fff
-    style TCP_H fill:#1e293b,stroke:#8b5cf6,stroke-width:1px,color:#fff
-    style MSS_D fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+
+    style ANALOGIA fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style Edificio fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
 ```
 
-1. **MTU (Maximum Transmission Unit):** Límite físico impuesto por la Capa de Enlace (Ethernet estándar = 1,500 bytes).
-2. **MSS (Maximum Segment Size):** Tamaño máximo de **datos útiles de aplicación** que un emisor TCP puede meter dentro de un segmento individual sin que el paquete IP resultante deba ser fragmentado en la Capa 3:
-   $$MSS = \text{MTU} - \text{Longitud Encabezado IP} - \text{Longitud Encabezado TCP}$$
-   $$MSS_{\text{estándar}} = 1500 - 20 - 20 = \mathbf{1460 \text{ bytes}}$$
+* Si escribes solo la dirección de la calle (solo la IP), el cartero llega al edificio pero **no sabe en qué buzón dejar la carta**.
+* Si escribes solo el número de apartamento (solo el puerto), el cartero tiene un número pero **no sabe en qué calle o ciudad queda**.
+* Por eso se necesita el **Socket completo**: `IP : Puerto` (ejemplo: `200.10.15.42:443`).
 
 ---
 
-### 6. Mecanismo de Comunicación Cliente-Servidor
+### 3. ¿Cómo se comunican dos computadoras? (El Par de Sockets)
+
+Cuando abres una página web en tu navegador:
+1. **El Servidor (quien ofrece el servicio):** Tiene un puerto fijo y muy conocido para que todo el mundo lo encuentre fácilmente (ejemplo: puerto `80` para web normal o `443` para web segura).
+2. **Tu Computadora (Cliente):** Para no confundir las respuestas, tu sistema operativo inventa un número de puerto temporal al azar llamado **Puerto Efímero o Dinámico** (ejemplo: `54321`).
+
+$$\text{Tu Navegador} \quad (192.168.1.10 : 54321) \longleftrightarrow (200.10.15.42 : 443) \quad \text{Servidor Web}$$
+
+Gracias a este invento, si abres **dos pestañas hacia el mismo sitio web**, tu computadora le inventa un puerto diferente a cada pestaña:
+* **Pestaña 1:** `Puerto 54321` $\rightarrow$ habla con el servidor.
+* **Pestaña 2:** `Puerto 54322` $\rightarrow$ habla con el servidor.
+Cuando el servidor responde, la computadora mira el puerto de retorno y sabe con total precisión en qué pestaña mostrar cada página.
+
+---
+
+### 4. Los Tres Rangos de Puertos (De memoria para el examen)
+
+Los números de puerto van del **0 al 65,535** (porque están guardados en un número de 16 bits: $2^{16} = 65,536$). Se dividen en tres grupos:
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Cliente as PC Cliente (192.168.1.50)
-    participant Servidor as Servidor Web (200.10.1.5)
-    
-    Note over Cliente: Abre navegador web (Pide IP:Puerto efímero)
-    Cliente->>Servidor: Petición HTTP (Origen: 192.168.1.50:54321 -> Destino: 200.10.1.5:80)
-    Note over Servidor: Procesa página index.html
-    Servidor->>Cliente: Respuesta HTTP (Origen: 200.10.1.5:80 -> Destino: 192.168.1.50:54321)
-    Note over Cliente: Entrega respuesta a la pestaña asociada al puerto 54321
+flowchart LR
+    R1["1. Puertos Bien Conocidos<br/><b>0 al 1,023</b><br/>Servicios famosos de Internet"] --> R2["2. Puertos Registrados<br/><b>1,024 al 49,151</b><br/>Programas y Bases de Datos"] --> R3["3. Puertos Dinámicos / Efímeros<br/><b>49,152 al 65,535</b><br/>Puertos temporales de tu PC"]
+
+    style R1 fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style R2 fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style R3 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
+```
+
+#### Los Puertos Más Preguntados en la UMG:
+| Puerto | Para qué sirve | Explicación en palabras sencillas |
+| :---: | :--- | :--- |
+| **80** | **HTTP** | Cargar páginas web tradicionales (sin candadito verde, texto claro). |
+| **443** | **HTTPS** | Cargar páginas web seguras con cifrado (con candadito verde). |
+| **53** | **DNS** | La "libreta telefónica": le das el nombre `google.com` y te devuelve su IP numérica. |
+| **67 / 68** | **DHCP** | El configurador automático: le da IP y máscara a tu PC cuando te conectas al Wi-Fi. |
+| **20 / 21** | **FTP** | Enviar y descargar archivos pesados a un servidor. |
+| **22** | **SSH** | Entrar a administrar un servidor o router por pantalla negra de forma segura y cifrada. |
+| **23** | **Telnet** | Lo mismo que SSH, pero viejo e inseguro (cualquiera puede espiar tu contraseña). |
+| **25** | **SMTP** | Enviar correos electrónicos desde tu cuenta hacia el mundo. |
+| **110** | **POP3** | Descargar correos a tu teléfono y borrarlos del servidor. |
+| **143** | **IMAP** | Leer correos sincronizados entre tu celular y tu computadora sin borrarlos. |
+
+---
+
+### 5. ¿Por qué los archivos se cortan en pedazos? (MTU y MSS)
+
+Imagina que quieres enviar un camión de mudanza lleno con un ropero gigante de 3 metros de alto por una carretera que tiene un túnel cuya altura máxima es de **1.50 metros**.
+* Si intentas meter el ropero entero, choca contra el túnel y se destruye.
+* **Solución:** Desarmas el ropero en tablas pequeñas, metes cada tabla en una caja de menos de 1.50 metros, las pasas por el túnel y en la casa de destino las vuelves a armar con tornillos.
+
+En redes pasa exactamente lo mismo:
+* **MTU (Maximum Transmission Unit):** Es la altura máxima del túnel impuesta por el cable Ethernet (**1,500 bytes**). La tarjeta de red no puede transmitir paquetes más grandes que eso.
+* **MSS (Maximum Segment Size):** Es el espacio que te queda libre para tus datos útiles dentro de la caja de 1,500 bytes, después de restar el espacio que ocupan las etiquetas de dirección:
+  * Etiqueta de la Capa de Red (Encabezado IP): mide **20 bytes**.
+  * Etiqueta de la Capa de Transporte (Encabezado TCP): mide **20 bytes**.
+  $$\text{MSS} = 1500 - 20 - 20 = \mathbf{1460 \text{ bytes}}$$
+
+```mermaid
+flowchart LR
+    subgraph MTU ["Túnel Máximo de la Red (MTU = 1500 Bytes)"]
+        direction LR
+        IP["Etiqueta IP<br/>(20 B)"] --- TCP["Etiqueta TCP<br/>(20 B)"] --- DATOS["Tus Datos Reales (MSS = 1460 Bytes)"]
+    end
+
+    style MTU fill:#0f172a,stroke:#3b82f6,stroke-width:2px,color:#fff
+    style IP fill:#1e293b,stroke:#f59e0b,stroke-width:1px,color:#fff
+    style TCP fill:#1e293b,stroke:#8b5cf6,stroke-width:1px,color:#fff
+    style DATOS fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
 ---
 
-### 7. Preguntas Avanzadas de Examen (Tipo UMG)
+### 6. Preguntas Típicas de Examen Resueltas con Sentido Común
 
-**P1: ¿Puede un servidor con una sola dirección IP pública atender a más de 65,535 clientes simultáneos en el puerto 443?**
-> **R:** **Sí, rotundamente.** Los 65,535 puertos limitan la cantidad de servicios locales o puertos efímeros de una sola máquina, pero las conexiones se diferencian por la **4-tupla**. Dado que cada cliente tiene una dirección IP distinta y un puerto de origen distinto, un solo socket de escucha en `IP_Servidor:443` puede mantener abiertas cientos de miles de conexiones concurrentes en memoria RAM.
+**P1: ¿Cuál es la diferencia entre lo que hace la Capa 3 (Red) y la Capa 4 (Transporte)?**
+> **R:** La Capa 3 se encarga de que los datos viajen de una computadora a otra en la red usando la dirección IP (*Host-to-Host*). La Capa 4 se encarga de entregar esos datos al programa específico dentro de la computadora que los estaba esperando usando los números de puerto (*Process-to-Process*).
 
-**P2: ¿Qué sucede si el paquete que genera la Capa de Transporte supera el MTU de la tarjeta de red?**
-> **R:** La Capa de Red (IP) se ve obligada a realizar **Fragmentación IP**, dividiendo el paquete en múltiples fragmentos con el mismo Identification y ajustando el campo Fragment Offset. Esto degrada gravemente el rendimiento porque si un solo fragmento se pierde en el camino, todo el paquete original debe descartarse.
+**P2: ¿Qué es un Socket y da un ejemplo?**
+> **R:** Es la combinación de una dirección IP y un número de puerto que identifica de forma única a una aplicación en la red. Ejemplo: `192.168.1.1:80` (identifica la página de administración del router).
 
-**P3: ¿Qué diferencia existe entre un puerto en estado `LISTEN` y un puerto en estado `ESTABLISHED`?**
-> **R:** Un puerto en `LISTEN` es un socket pasivo del servidor que no transmite datos, solo espera a que un cliente envíe un SYN para iniciar una sesión. Un socket en `ESTABLISHED` representa una conexión activa y dedicada que ya completó el Three-Way Handshake y tiene un par de sockets asociado intercambiando datos.
+**P3: ¿Qué rango numérico tienen los puertos efímeros y quién los asigna?**
+> **R:** Van del **49,152 al 65,535**. Son asignados automáticamente por el sistema operativo de tu propia computadora cuando abres un programa cliente (como el navegador web) para salir a Internet.

@@ -1,165 +1,150 @@
 # Módulo 1: Capa de Transporte
-## Tema 1.2: Protocolo TCP Exhaustivo (Estados, Algoritmos de Congestión y BDP)
+## Tema 1.2: Protocolo TCP Explicado con Manzanas (Confiabilidad y Estados)
 
 ---
 
-### 1. Anatomía y Campos Críticos del Encabezado TCP (RFC 793)
+### 📖 Mini Diccionario para Empezar
 
-El encabezado TCP tiene una longitud fija mínima de **20 bytes** (hasta 60 bytes si incluye opciones). En una cuadrícula de **32 bits de ancho**, los campos se distribuyen de la siguiente forma:
-
-| Fila de 32 Bits | Bits 0 – 15 | Bits 16 – 31 |
-| :---: | :--- | :--- |
-| **Palabra 1 (Bytes 0-3)** | **Puerto de Origen** (*Source Port* - 16 bits) | **Puerto de Destino** (*Destination Port* - 16 bits) |
-| **Palabra 2 (Bytes 4-7)** | **Número de Secuencia** (*Sequence Number* - 32 bits completos) | |
-| **Palabra 3 (Bytes 8-11)**| **Número de Reconocimiento** (*Acknowledgment Number* - 32 bits completos) | |
-| **Palabra 4 (Bytes 12-15)**| **Data Offset** (4b) \| **Reservado** (6b) \| **Flags** (`URG,ACK,PSH,RST,SYN,FIN` - 6b) | **Tamaño de Ventana** (*Window Size* - 16 bits) |
-| **Palabra 5 (Bytes 16-19)**| **Checksum** (16 bits) | **Puntero Urgente** (*Urgent Pointer* - 16 bits) |
-| **Palabra 6+ (Opcional)**| **Opciones de TCP** (0 a 40 bytes: MSS, Window Scale, SACK) + Relleno (*Padding*) | |
-
-#### Análisis Profundo de Campos de Control:
-* **Sequence Number (32 bits):** Si el flag `SYN` está activo (1), este es el **ISN (Initial Sequence Number)** generado aleatoriamente. Si `SYN` es 0, es el número de secuencia acumulado del primer byte de datos del segmento.
-* **Acknowledgment Number (32 bits):** Reconocimiento acumulativo (*Cumulative ACK*). Informa al emisor: *"He recibido correctamente todos los bytes hasta el número N-1; envíame el byte N a continuación"*.
-* **Data Offset (4 bits):** Número de palabras de 32 bits en el encabezado. Indica dónde terminan las opciones y comienzan los datos reales. Mínimo es 5 ($5 \times 4 = 20\text{ bytes}$), máximo 15 ($15 \times 4 = 60\text{ bytes}$).
-* **Flags de Control (6 bits esenciales):**
-  * **URG:** Apunta a datos prioritarios que deben saltarse la cola de procesamiento normal.
-  * **ACK:** Obligatorio en todos los paquetes posteriores al primer SYN. Valida el campo Acknowledgment Number.
-  * **PSH (Push):** Fuerza al receptor a vaciar su búfer y entregar los datos inmediatamente a la aplicación sin esperar a acumular más bytes.
-  * **RST (Reset):** Aborta una conexión de forma abrupta e inmediata (usado cuando llega un paquete a un puerto cerrado o el host colapsó).
-  * **SYN:** Sincroniza números de secuencia al iniciar conexiones.
-  * **FIN:** Notifica que el emisor ha terminado de enviar datos y solicita un cierre ordenado.
-* **Window Size (16 bits):** Mecanismo de **Control de Flujo**. Indica cuántos bytes puede recibir el búfer del receptor antes de saturarse. Límite máximo nativo: $2^{16}-1 = 65,535\text{ bytes}$ (expandible con la opción *Window Scale*).
+* **Protocolo:** Es simplemente un conjunto de reglas de etiqueta y educación que dos computadoras acuerdan seguir para entenderse sin pelear.
+* **Orientado a Conexión:** Significa que antes de enviar cualquier dato real, las dos computadoras primero se saludan, se presentan y comprueban que la línea esté abierta (como hacer una llamada telefónica antes de hablar).
+* **Confiable (Reliable):** No significa que el cable nunca falle; significa que **si un paquete se pierde en el camino, TCP se da cuenta y lo vuelve a enviar automáticamente** hasta que llegue completo.
+* **Banderas (Flags):** Son pequeños interruptores de Sí o No (1 o 0) en el paquete que indican la intención del mensaje: *"Quiero iniciar"* (`SYN`), *"Recibí tu mensaje"* (`ACK`), o *"Quiero terminar"* (`FIN`).
+* **Sequence Number (SEQ):** Es como numerar las páginas de un libro (página 1, 2, 3...) para que si las hojas se caen al piso y se desordenan en el viaje, el receptor las pueda volver a ordenar perfectamente.
+* **Acknowledgment Number (ACK):** Es el acuse de recibo. Le dice al emisor: *"Ya recibí hasta la página 5, ahora mándame la página 6"*.
 
 ---
 
-### 2. La Máquina de Estados Finitos de TCP (Los 11 Estados Oficiales)
+### 1. La Gran Analogía de TCP: La Llamada Telefónica Formal
 
-En exámenes de ingeniería y preguntas de certificación, los estados de TCP son evaluados rigurosamente:
+Imagina que necesitas dictarle un contrato legal importantísimo a un abogado por teléfono:
+1. No levantas la bocina y empiezas a gritar el contrato en el primer segundo.
+2. Primero marcas el número, esperas a que la otra persona conteste y diga: *"¿Aló?"*.
+3. Tú respondes: *"Hola Licenciado, ¿me escucha bien?"*, y él te dice: *"Sí, te escucho perfecto, empieza"*.
+4. Conforme le dictas cada párrafo, tú le preguntas: *"¿Anotó el párrafo 1?"*, y él responde: *"Anotado, continúa con el 2"*.
+5. Si un camión pasa por la calle haciendo ruido y el abogado no escucha un párrafo, él te interrumpe y dice: *"No te escuché esa última parte, repítela"*. Tú la repites.
+6. Al final, ambos se despiden educadamente antes de colgar.
+
+**Eso es exactamente TCP (Transmission Control Protocol).** Es formal, ordenado, seguro y garantiza que ninguna palabra se pierda.
+
+---
+
+### 2. El Saludo de Tres Vías (Three-Way Handshake)
+
+Antes de que puedas ver el primer video de YouTube o cargar la página de la UMG, tu navegador y el servidor realizan este saludo formal de 3 pasos:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as Tu Computadora (Cliente)
+    participant Servidor as Servidor Web
+    
+    Note over Cliente,Servidor: El servidor está esperando en silencio (LISTEN)
+    Cliente->>Servidor: 1. SYN: "Hola, quiero conectarme contigo. Mi número inicial es 100"
+    Note over Servidor: El servidor contesta amablemente aceptando
+    Servidor->>Cliente: 2. SYN + ACK: "Hola, te escucho. Recibí tu 100, mándame el 101. Mi número es 500"
+    Note over Cliente: Tu computadora confirma que lo escuchó
+    Cliente->>Servidor: 3. ACK: "Perfecto, recibí tu 500, espero el 501. ¡Conexión lista!"
+    Note over Cliente,Servidor: Estado: ESTABLISHED (Ahora sí viajan los datos reales)
+```
+
+#### Los 3 pasos explicados en lenguaje humano:
+1. **Paso 1 (SYN - Synchronize):** Tu PC le toca la puerta al servidor y le dice: *"Hola, quiero hablar contigo. Mi primer número de mensaje será el 100"*. (Bandera activa: `SYN=1`).
+2. **Paso 2 (SYN-ACK):** El servidor responde: *"Hola, recibí tu solicitud con el número 100, así que ahora espero tu mensaje 101 (`ACK=101`). Yo también quiero hablar contigo y mi primer número de mensaje será el 500 (`SYN=500`)"*. (Banderas activas: `SYN=1`, `ACK=1`).
+3. **Paso 3 (ACK - Acknowledgment):** Tu PC contesta: *"Excelente, recibí tu número 500, así que espero tu mensaje 501 (`ACK=501`). ¡Empecemos!"*. (Bandera activa: `ACK=1`).
+
+A partir de este instante, ambos pasan al estado **ESTABLISHED** y comienzan a transferir la página web o los datos reales.
+
+---
+
+### 3. La Despedida de 4 Vías (Cerrar la Conexión)
+
+Cuando terminas de descargar la página o cierras la pestaña, no puedes colgar bruscamente; se realiza una despedida educada en 4 pasos:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Cliente as Tu Computadora
+    participant Servidor as Servidor Web
+    
+    Cliente->>Servidor: 1. FIN: "Ya no tengo más cosas que pedirte, adiós"
+    Servidor->>Cliente: 2. ACK: "Entendido, recibí tu adiós"
+    Note over Servidor: El servidor termina de enviar lo que tenía pendiente...
+    Servidor->>Cliente: 3. FIN: "Yo tampoco tengo nada más que enviarte, adiós"
+    Cliente->>Servidor: 4. ACK: "Entendido tu adiós final. Cerramos."
+```
+
+---
+
+### 4. Los Estados de TCP Explicados sin Complicaciones
+
+En los libros de redes te muestran una "Máquina de Estados" que asusta a cualquiera. En realidad, los estados son simplemente **en qué etapa de la conversación está la computadora**:
 
 ```mermaid
 flowchart TD
-    CLOSED["CLOSED (Estado Inicial)"]
-    LISTEN["LISTEN (Servidor espera conexión)"]
-    SYN_SENT["SYN_SENT (Cliente envió SYN)"]
-    SYN_RCVD["SYN_RECEIVED (Servidor envió SYN-ACK)"]
-    ESTAB["ESTABLISHED (Conexión Abierta - Transmisión de Datos)"]
+    LISTEN["1. LISTEN<br/>(El teléfono está en la mesa esperando que alguien llame)"]
+    SYN_SENT["2. SYN-SENT<br/>(Marcaste el número y estás esperando que digan 'Aló')"]
+    ESTAB["3. ESTABLISHED<br/>(¡Llamada activa! Ambos están platicando)"]
+    CLOSE_WAIT["4. CLOSE-WAIT<br/>(La otra persona te dijo adiós y tú estás terminando tu frase)"]
+    TIME_WAIT["5. TIME-WAIT<br/>(Esperar 1 minuto con el auricular en la oreja por si no escucharon tu adiós)"]
 
-    CLOSED -->|"Servidor abre socket pasivo"| LISTEN
-    CLOSED -->|"Cliente envía SYN"| SYN_SENT
-    LISTEN -->|"Recibe SYN, envía SYN-ACK"| SYN_RCVD
-    SYN_SENT -->|"Recibe SYN-ACK, envía ACK"| ESTAB
-    SYN_RCVD -->|"Recibe ACK del cliente"| ESTAB
+    LISTEN --> SYN_SENT --> ESTAB --> CLOSE_WAIT --> TIME_WAIT
 
-    subgraph CIERRE_ACTIVO ["Cierre Activo (Iniciado por Host A)"]
-        FIN_WAIT_1["FIN_WAIT_1 (Envió FIN)"]
-        FIN_WAIT_2["FIN_WAIT_2 (Recibió ACK del FIN)"]
-        TIME_WAIT["TIME_WAIT (Espera 2MSL: 60-120s)"]
-    end
-
-    subgraph CIERRE_PASIVO ["Cierre Pasivo (Receptor Host B)"]
-        CLOSE_WAIT["CLOSE_WAIT (Recibió FIN, envió ACK)"]
-        LAST_ACK["LAST_ACK (Envió su propio FIN)"]
-    end
-
-    ESTAB -->|"Host A envía FIN"| FIN_WAIT_1
-    ESTAB -->|"Host B recibe FIN"| CLOSE_WAIT
-    FIN_WAIT_1 -->|"Host A recibe ACK"| FIN_WAIT_2
-    CLOSE_WAIT -->|"Host B envía FIN"| LAST_ACK
-    FIN_WAIT_2 -->|"Host A recibe FIN, envía ACK final"| TIME_WAIT
-    LAST_ACK -->|"Host B recibe ACK final"| CLOSED
-    TIME_WAIT -->|"Expira temporizador 2MSL"| CLOSED
-
-    style CLOSED fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
     style LISTEN fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
+    style SYN_SENT fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
     style ESTAB fill:#1e293b,stroke:#10b981,stroke-width:3px,color:#fff
-    style TIME_WAIT fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style CLOSE_WAIT fill:#1e293b,stroke:#a855f7,stroke-width:2px,color:#fff
+    style TIME_WAIT fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
 ```
 
-#### Tabla de Referencia de los 11 Estados:
-
-| Estado TCP | ¿Quién lo experimenta? | Significado y Evento que lo Provoca |
-| :--- | :---: | :--- |
-| **`CLOSED`** | Ambos | Estado inicial o final cuando no existe conexión alguna. |
-| **`LISTEN`** | Servidor | El servidor está a la espera pasiva de solicitudes de conexión en un puerto. |
-| **`SYN-SENT`** | Cliente | El cliente envió el primer segmento `SYN` y espera el `SYN-ACK` de respuesta. |
-| **`SYN-RECEIVED`** | Servidor | El servidor recibió el `SYN`, envió su `SYN-ACK` y espera el `ACK` final. |
-| **`ESTABLISHED`** | Ambos | Conexión completamente abierta; los datos de aplicación fluyen bidireccionalmente. |
-| **`FIN-WAIT-1`** | Iniciador del cierre | El host inició el cierre activo enviando un `FIN` y espera su `ACK`. |
-| **`FIN-WAIT-2`** | Iniciador del cierre | Recibió el `ACK` a su `FIN`, pero aún espera el `FIN` del otro extremo. |
-| **`CLOSE-WAIT`** | Receptor del cierre | Recibió el `FIN` del otro extremo, envió `ACK` y notifica a su aplicación local que cierre. |
-| **`CLOSING`** | Ambos (raro) | Ambos extremos enviaron `FIN` casi simultáneamente. |
-| **`LAST-ACK`** | Receptor del cierre | Envió su propio `FIN` hacia el iniciador y espera el último `ACK` para morir. |
-| **`TIME-WAIT`** | Iniciador del cierre | Espera un periodo de **2MSL** antes del cierre definitivo para garantizar la entrega del ACK final. |
-
-#### ¿Por qué es vital el estado `TIME-WAIT` y qué es el 2MSL?
-* **MSL (Maximum Segment Lifetime):** Tiempo máximo que un paquete puede vagar por Internet antes de ser destruido por el TTL (estandarizado en 30 a 60 segundos). **2MSL = 60 a 120 segundos**.
-* **Propósitos fundamentales del estado TIME-WAIT:**
-  1. **Garantizar que el ACK final llegue:** Si el último `ACK` enviado por el Host A se pierde en la red, el Host B volverá a retransmitir su `FIN`. Si el Host A estuviera en `CLOSED`, rechazaría ese `FIN` con un `RST` erróneo en vez de responder con el `ACK` esperado.
-  2. **Drenar paquetes fantasma viejos:** Evita que segmentos duplicados rezagados de la conexión vieja lleguen a una nueva conexión que casualmente utilice el mismo par de sockets (`IP:Puerto`).
+#### ¿Por qué existe el famoso estado `TIME-WAIT` (El temporizador 2MSL)?
+Imagina que te despides de tu amigo por teléfono: *"¡Bueno, adiós!"*. Pero justo en ese segundo la llamada tuvo interferencia y tu amigo no escuchó tu *"¡adiós!"*.  
+Si cuelgas de inmediato y desconectas el teléfono, tu amigo se quedará esperando y volverá a marcar preguntando: *"¿Aló? ¿Te cortaste?"*.  
+Por eso, TCP se queda en silencio esperando entre **60 y 120 segundos (llamado 2MSL)** antes de destruir la conexión, para asegurarse de que el otro lado recibió el último adiós sin problemas.
 
 ---
 
-### 3. Control de Congestión en TCP: Algoritmos y Fórmulas
+### 5. Control de Flujo: El Embudo y la Cubeta (Window Size)
 
-A diferencia del **Control de Flujo** (que protege la memoria del receptor usando el campo *Window Size*), el **Control de Congestión** protege a la red intermedia (routers e infraestructura troncal) para evitar el colapso por saturación.
+Imagina que estás llenando un vaso pequeño de agua con una manguera de bomberos a toda presión: **el agua se va a derramar y el 90% se va a perder en el piso**.
 
-TCP mantiene una variable interna llamada **cwnd (Congestion Window)** que mide cuántos bytes puede inyectar a la red. El emisor nunca envía más que:
+En las computadoras pasa lo mismo: si un servidor ultra rápido le envía datos a una computadora vieja o a un celular con poca memoria a toda velocidad, el celular se satura y empieza a tirar paquetes a la basura.
 
-$$\text{Ventana Efectiva} = \min(\text{cwnd}, \text{Window Size del Receptor})$$
+**La solución de TCP (Window Size / Tamaño de Ventana):**
+* El receptor le dice al emisor en cada paquete: *"Oye, en mi memoria solo me queda espacio para recibir 5,000 bytes. Mándame como máximo 5,000 bytes y luego detente a esperar hasta que yo los procese y te dé permiso de mandar más"*.
+* De esta forma, un emisor rápido jamás inunda a un receptor lento.
 
 ```mermaid
 flowchart LR
-    A["Fase 1: Slow Start<br/><b>(Crecimiento Exponencial)</b>"] -->|"Alcanza umbral ssthresh"| B["Fase 2: Congestion Avoidance<br/><b>(Crecimiento Lineal AIMD)</b>"]
-    B -->|"Pérdida por 3 ACKs Duplicados"| C["Fast Retransmit & Fast Recovery<br/><b>(ssthresh = cwnd / 2)</b>"]
-    B -->|"Pérdida Severa por Timeout RTO"| A
-    C --> B
+    Servidor["Servidor Potente<br/>(Emisor Rápido)"] -->|"Envía exactamente lo que cabe en el búfer"| Celular["Celular / PC<br/>(Receptor con Memoria Limitada)"]
+    Celular -.->|"Window Size: 'Solo tengo espacio para 4 KB'"| Servidor
 
-    style A fill:#1e293b,stroke:#f59e0b,stroke-width:2px,color:#fff
-    style B fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
-    style C fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style Servidor fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#fff
+    style Celular fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
-#### A. Arranque Lento (Slow Start)
-* Comienza con un valor pequeño de `cwnd` (típicamente 1 a 10 MSS).
-* Por cada `ACK` recibido, `cwnd` se incrementa en 1 MSS.
-* **Resultado matemático:** `cwnd` **se duplica en cada RTT (crecimiento exponencial)**: $1 \rightarrow 2 \rightarrow 4 \rightarrow 8 \rightarrow 16 \dots$
+---
 
-#### B. Prevención de Congestión (Congestion Avoidance)
-* Entra en vigor cuando `cwnd` alcanza un umbral llamado **ssthresh (Slow Start Threshold)**.
-* Para no saturar bruscamente la red, `cwnd` ya no crece exponencialmente, sino **linealmente (1 MSS por cada RTT)**. Esto implementa el modelo **AIMD (Additive Increase, Multiplicative Decrease)**.
+### 6. Control de Congestión: El Tráfico en la Carretera (Slow Start)
 
-#### C. Detección y Recuperación de Pérdidas
-1. **Pérdida Severa por Temporizador (RTO Timeout):**
-   * Indica congestión catastrófica en la red.
-   * `ssthresh` se reduce a la mitad de la ventana actual: $\text{ssthresh} = \frac{\text{cwnd}}{2}$.
-   * `cwnd` se desploma a **1 MSS** y la conexión vuelve a empezar en **Slow Start**.
-2. **Pérdida Leve por 3 ACKs Duplicados (Fast Retransmit & Fast Recovery - TCP Reno):**
-   * Si llegan 3 ACKs idénticos pidiendo el mismo segmento perdido, significa que los paquetes posteriores sí están pasando por la red.
-   * Retransmite el segmento perdido de inmediato sin esperar a que expire el temporizador RTO.
-   * `ssthresh = cwnd / 2`, fija `cwnd = ssthresh + 3 MSS` y continúa en **Congestion Avoidance**, evitando caer a 1 MSS.
+Aquí el problema no es tu celular ni el servidor; **el problema es la carretera intermedia (los cables y routers de Internet)**.
+
+Si todo el mundo inyecta millones de datos a la vez, los routers de Internet se saturan y colapsan como el periférico de la Ciudad de Guatemala a las 6:00 PM.
+
+TCP usa un algoritmo inteligente llamado **Slow Start (Arranque Lento)**:
+1. **Comienza con prudencia:** Primero envía 1 paquete pequeño a la red para tantear el terreno.
+2. **Si pasa bien:** Envía 2 paquetes. Si pasan bien, envía 4, luego 8, luego 16... **(Crecimiento Exponencial)**.
+3. **Llega al límite seguro (ssthresh):** Cuando nota que la red ya está bastante llena, deja de duplicar como loco y empieza a aumentar con cuidado de 1 en 1: 17, 18, 19...
+4. **Si un paquete se pierde:** TCP deduce: *"¡Cuidado, la carretera está colapsada!"*, y **reduce inmediatamente su velocidad a la mitad** para descongestionar la red.
 
 ---
 
-### 4. Producto Retardo-Ancho de Banda (BDP - Bandwidth-Delay Product)
+### 7. Preguntas de Examen con Sentido Común
 
-El **BDP** es uno de los conceptos de ingeniería más importantes para optimizar redes de alta velocidad:
+**P1: ¿Cuáles banderas (flags) van encendidas en el segundo paso del saludo Three-Way Handshake?**
+> **R:** Van encendidas las banderas **SYN** y **ACK** (`SYN=1`, `ACK=1`).
 
-$$BDP = \text{Ancho de Banda (bits/s)} \times RTT (\text{segundos})$$
+**P2: ¿Para qué sirve el campo Window Size en el encabezado TCP?**
+> **R:** Sirve para el **Control de Flujo**, avisándole al emisor cuántos bytes puede recibir el receptor antes de saturar su memoria.
 
-* **Significado físico:** El BDP representa el volumen total de datos que pueden estar "en tránsito" llenando el cable simultáneamente sin haber recibido aún un acuse de recibo.
-
-#### Ejemplo de Cálculo de Examen:
-Imagina un enlace de fibra óptica inter-campus de **1 Gbps** con un tiempo de ida y vuelta (**RTT**) de **20 milisegundos** ($0.020\text{ s}$):
-$$BDP = 1,000,000,000\text{ bps} \times 0.020\text{ s} = 20,000,000\text{ bits}$$
-$$\text{BDP en Bytes} = \frac{20,000,000}{8} = 2,500,000\text{ bytes} \approx \mathbf{2.5 \text{ MB}}$$
-
-* **La Opción Window Scale (RFC 1323):**
-  Como el campo nativo de *Window Size* de TCP solo tiene 16 bits (máximo $65,535\text{ bytes}$ o $64\text{ KB}$), una conexión TCP estándar solo podría llenar $64\text{ KB}$ de los $2.5\text{ MB}$ que soporta el enlace, dejando el **97% de la fibra óptica desperdiciada**.  
-  La opción *Window Scale* permite multiplicar el valor de la ventana por potencias de 2 (hasta $2^{14}$), habilitando ventanas de recepción de hasta **1 Gigabyte**, indispensables en redes modernas.
-
----
-
-### 5. Algoritmo de Nagle vs. Delayed ACKs
-
-* **Algoritmo de Nagle (RFC 896):** Resuelve el problema del "tráfico de pequeños paquetes" (ej. en sesiones SSH donde un usuario escribe 1 letra: 1 byte de datos genera 40 bytes de cabecera IP/TCP = 97.5% de sobrecarga). Nagle retiene los datos pequeños en el búfer hasta acumular un segmento completo (1 MSS) o hasta recibir el ACK del segmento anterior.
-* **Delayed ACKs:** El receptor espera hasta 200 ms antes de enviar un ACK para ver si la aplicación va a mandar datos de respuesta y así montar el ACK en ese paquete (*piggybacking*).
-* **Conflicto histórico:** Si Nagle espera un ACK y el receptor espera datos para enviar el ACK, se produce un retardo de 200 ms en cada interacción. En aplicaciones en tiempo real (videojuegos, streaming), los programadores desactivan Nagle usando la opción de socket `TCP_NODELAY`.
+**P3: ¿Qué significa que TCP sea un protocolo "confiable"?**
+> **R:** Significa que garantiza que todos los datos lleguen completos y en orden, usando números de secuencia (`SEQ`), acuses de recibo (`ACK`) y retransmitiendo automáticamente cualquier paquete que se haya perdido en la red.

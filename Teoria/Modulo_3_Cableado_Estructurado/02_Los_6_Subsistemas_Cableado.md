@@ -1,28 +1,41 @@
 # Módulo 3: Cableado Estructurado
-## Tema 3.2: Los 6 Subsistemas del Cableado Estructurado
+## Tema 3.2: Los 6 Subsistemas de Cableado (El Mapa Completo de un Edificio)
 
 ---
 
-### 1. Visión General de los 6 Subsistemas (Norma ANSI/TIA/EIA-568)
+### 📖 Mini Diccionario de Piezas Físicas (Para que sepas qué compras)
 
-La norma divide la infraestructura de un edificio en seis subsistemas modulares e independientes:
+* **Faceplate (Placa de pared):** La tapa plástica cuadrada atornillada a la pared donde enchufas el cable de red de tu computadora.
+* **Jack RJ-45 (Keystone):** El cuadrito hembra que va encajado dentro de la placa de pared donde metes la espiga del cable.
+* **Patch Cord (Cable de parcheo):** El cable de red corto y flexible (de 1 a 3 metros) con conectores macho en ambas puntas.
+* **Patch Panel (Panel de conexiones):** Una regleta metálica de 24 o 48 puertos que se atornilla al rack. Por detrás se clavan los cables que vienen de las paredes del edificio, y por delante ofrece puertos limpios para conectar los switches con cables cortos.
+* **Rack / Gabinete:** El mueble metálico (abierto como una torre o cerrado como un armario con puerta de vidrio) donde se atornillan ordenadamente los switches, routers y patch panels.
+* **MDF (Main Distribution Frame / Cuarto Central):** El cuarto de cómputo principal del edificio (donde están los servidores y el router central que recibe el Internet de la calle).
+* **IDF (Intermediate Distribution Frame / Cuarto de Piso):** El pequeño gabinete o cuarto técnico ubicado en cada piso para concentrar las computadoras de ese piso.
+
+---
+
+### 1. El Mapa de los 6 Subsistemas
+
+La norma divide la red física de cualquier edificio en seis partes modulares e independientes:
 
 ```mermaid
 flowchart TD
-    EF["1. Instalaciones de Entrada (Entrance Facility - EF)"] --> ER["2. Cuarto de Equipos (Equipment Room - ER / MDF)"]
-    ER -->|"3. Cableado Backbone / Vertical"| TR1["4. Cuarto Telecomunicaciones Piso 1 (TR/IDF 1)"]
-    ER -->|"3. Cableado Backbone / Vertical"| TR2["4. Cuarto Telecomunicaciones Piso 2 (TR/IDF 2)"]
-    ER -->|"3. Cableado Backbone / Vertical"| TR3["4. Cuarto Telecomunicaciones Piso 3 (TR/IDF 3)"]
+    EF["1. Instalaciones de Entrada (EF)<br/>Donde entra la fibra del proveedor de Internet (ISP)"] --> MDF["2. Cuarto de Equipos Principal (MDF / ER)<br/>Servidores centrales y Router principal"]
     
-    TR1 -->|"5. Cableado Horizontal <= 90m"| WA1["6. Área de Trabajo Piso 1 (Work Area - WA)"]
-    TR2 -->|"5. Cableado Horizontal <= 90m"| WA2["6. Área de Trabajo Piso 2 (Work Area - WA)"]
-    TR3 -->|"5. Cableado Horizontal <= 90m"| WA3["6. Área de Trabajo Piso 3 (Work Area - WA)"]
+    MDF -->|"3. Cableado Vertical (Backbone)<br/>Fibra óptica o UTP grueso entre pisos"| IDF1["4. Cuarto Técnico Piso 1 (IDF 1)"]
+    MDF -->|"3. Cableado Vertical (Backbone)"| IDF2["4. Cuarto Técnico Piso 2 (IDF 2)"]
+    MDF -->|"3. Cableado Vertical (Backbone)"| IDF3["4. Cuarto Técnico Piso 3 (IDF 3)"]
+    
+    IDF1 -->|"5. Cableado Horizontal<br/>Máximo 90 metros de cable dentro de la pared"| WA1["6. Área de Trabajo (WA)<br/>Toma de pared + PC del usuario"]
+    IDF2 -->|"5. Cableado Horizontal"| WA2["6. Área de Trabajo (WA)"]
+    IDF3 -->|"5. Cableado Horizontal"| WA3["6. Área de Trabajo (WA)"]
 
     style EF fill:#1e293b,stroke:#ec4899,stroke-width:2px,color:#fff
-    style ER fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
-    style TR1 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
-    style TR2 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
-    style TR3 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style MDF fill:#1e293b,stroke:#ef4444,stroke-width:2px,color:#fff
+    style IDF1 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style IDF2 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
+    style IDF3 fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
     style WA1 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
     style WA2 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
     style WA3 fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
@@ -30,56 +43,40 @@ flowchart TD
 
 ---
 
-### 2. Detalle y Función de cada Subsistema
+### 2. Detalle de los 6 Subsistemas en Palabras Claras
 
-#### 1. Instalaciones de Entrada (Entrance Facility - EF)
-* **Definición:** Punto donde penetran al edificio los cables de los proveedores externos de servicios de telecomunicaciones (Internet por fibra óptica, telefonía pública PSTN, televisión por cable).
-* **Componente clave:** Contiene el **Punto de Demarcación (Demarc)**, que es el límite físico y legal de responsabilidad entre el proveedor de servicios (ISP) y el propietario de la red del edificio.
-* **Elementos:** Protectores contra sobretensiones eléctricas, cajas de transición y bloques de empalme.
+1. **Instalaciones de Entrada (EF - Entrance Facility):**
+   * El agujero o ducto subterráneo por donde entra el cable de fibra óptica de la empresa que te vende Internet (Claro, Tigo, etc.) desde la calle hacia el edificio.
+   * Contiene el **Punto de Demarcación (Demarc)**: la cajita que marca la frontera legal (*"De la caja hacia la calle es culpa de Tigo/Claro; de la caja hacia adentro del edificio es responsabilidad de la universidad"*).
+2. **Cuarto de Equipos (ER / MDF):**
+   * El corazón del edificio. El cuarto frío con aire acondicionado donde están los servidores grandes y el router empresarial principal.
+3. **Cableado Troncal / Vertical (Backbone):**
+   * Las autopistas que suben de piso en piso uniendo los cuartitos de cada piso con el MDF central. Se usa **Fibra Óptica** o cable de cobre grueso **Cat 6A**.
+4. **Cuarto de Telecomunicaciones de Piso (TR / IDF):**
+   * Un gabinete o cuarto pequeño ubicado en el piso donde se reciben los cables de las oficinas de ese nivel. Contiene el **Patch Panel** y el **Switch de acceso** (ejemplo: Cisco Catalyst 2960).
+5. **Cableado Horizontal (La regla métrica sagrada):**
+   * Los cables que viajan por el techo o por canaletas desde el cuarto del piso hasta la pared donde está sentada la persona.
+6. **Área de Trabajo (WA - Work Area):**
+   * La placa de pared en el escritorio, el patch cord de 3 metros y la computadora del usuario.
 
-#### 2. Cuarto de Equipos (Equipment Room - ER / MDF)
-* **Definición:** El espacio centralizado más importante del edificio (frecuentemente llamado **MDF - Main Distribution Frame** o Centro de Datos).
-* **Función:** Alberga los equipos de red activos de alta densidad: Routers de borde, Switches Core (Capa 3), Servidores principales (Base de datos, DNS, Web, DHCP), Firewalls y PBX IP.
-* **Requisitos:** Aire acondicionado de precisión (temperatura 18°-24°C), control de humedad, sistema de extinción de incendios por gas limpio (FM-200 / Novec 1230), sistema de alimentación ininterrumpida (UPS) y control de acceso biométrico.
+---
 
-#### 3. Cableado de Respaldo / Troncal / Vertical (Backbone Cabling)
-* **Definición:** Conecta los distintos cuartos de telecomunicaciones (TR/IDF) de cada piso hacia el cuarto de equipos principal (ER/MDF), o intercomunica distintos edificios dentro de un campus.
-* **Topología:** Jerárquica en estrella de primer y segundo nivel (Backbone inter-edificios y backbone intra-edificio).
-* **Medios de transmisión utilizados:**
-  * **Fibra Óptica Multimodo (MMF OM3 / OM4):** Medio predilecto por su gran ancho de banda (10G/40G) e inmunidad absoluta al ruido electromagnético entre pisos.
-  * **Fibra Óptica Monomodo (SMF):** Para enlaces largos entre edificios en campus (superiores a 500 m).
-  * **Cobre UTP Categoría 6A:** Utilizado en distancias cortas (menos de 100m) como respaldo de cobre.
+### 3. La Regla de Oro de Distancias: 90m + 10m = 100m Máximo
 
-#### 4. Cuarto de Telecomunicaciones (Telecommunications Room - TR / IDF)
-* **Definición:** Cuarto técnico o gabinete intermedio ubicado en cada piso del edificio (conocido como **IDF - Intermediate Distribution Frame**).
-* **Función:** Es el punto de transición y consolidación donde termina el cableado horizontal de las estaciones de trabajo de ese piso y se conecta al switch de acceso de piso mediante el Patch Panel.
-* **Elementos en rack:**
-  * **Patch Panel modular de 24 o 48 puertos:** Donde se rematan los cables horizontales con la ponchadora de impacto.
-  * **Switch de Acceso (ej. Cisco 2960):** Conecta las tomas a la red local.
-  * **Organizadores de cables horizontales y verticales (Cable Managers):** Mantienen el peinado limpio de los cables.
-  * **PDU (Unidad de Distribución de Energía):** Regleta para alimentar los switches.
-
-#### 5. Cableado Horizontal (Horizontal Cabling) - ¡Reglas Métricas de Examen!
-* **Definición:** Es el tendido físico que va desde el Patch Panel del TR/IDF hasta la toma de pared (*Faceplate*) del puesto de usuario.
-* **Topología física:** **Estrella estricta** (prohibido puentear o conectar tomas en cadena margarita/bus).
-* **Límites de distancia estrictos (La regla 90m + 10m = 100m):**
-
-$$\text{Enlace Permanente (Permanent Link)} \le 90 \text{ metros}$$
-$$\text{Patch Cords Totales (Gabinete + Área de Trabajo)} \le 10 \text{ metros}$$
-$$\text{Canal Completo (Channel Link)} \le 100 \text{ metros}$$
+Esta es la fórmula que más repiten los ingenieros en los exámenes:
 
 ```mermaid
 flowchart LR
-    subgraph TR ["Cuarto Telecomunicaciones (TR / IDF)"]
-        SW["Switch de Acceso<br/>Cisco Catalyst 2960"] ---|"Patch Cord Gabinete<br/>(Máx 5 metros)"| PP["Patch Panel Modular<br/>24 Puertos Cat 6"]
+    subgraph TR ["Gabinete de Piso (IDF)"]
+        SW["Switch 2960"] ---|"Patch Cord Gabinete<br/>(Máx 5 metros)"| PP["Patch Panel"]
     end
 
-    subgraph HORIZ ["Tendido Horizontal en Pared / Techo"]
-        PP ===|"Enlace Permanente de Cobre Sólido<br/>(Máximo 90 metros)"| JACK["Toma de Pared Faceplate<br/>Jack RJ-45 Keystone"]
+    subgraph HORIZ ["Tendido en Pared / Canaleta"]
+        PP ===|"Cable UTP Sólido en Pared<br/><b>MÁXIMO 90 METROS</b><br/>(Enlace Permanente)"| JACK["Toma de Pared (Jack RJ-45)"]
     end
 
-    subgraph WA ["Área de Trabajo (Work Area)"]
-        JACK ---|"Patch Cord de Usuario<br/>(Máx 5 metros, típicamente 3m)"| PC["Estación de Trabajo / PC<br/>Tarjeta NIC"]
+    subgraph WA ["Puesto del Usuario"]
+        JACK ---|"Patch Cord Usuario<br/>(Máx 5 metros, suele ser 3m)"| PC["PC del Usuario"]
     end
 
     style TR fill:#1e293b,stroke:#8b5cf6,stroke-width:2px,color:#fff
@@ -87,25 +84,28 @@ flowchart LR
     style WA fill:#1e293b,stroke:#10b981,stroke-width:2px,color:#fff
 ```
 
-* **Tipo de conductor:** El cable horizontal que va dentro de tuberías y canaletas utiliza conductor **sólido** (alambre de cobre rígido de una sola hebra), ideal para ponchado y largas distancias.
+$$\text{Cable en la pared (Enlace Permanente)} \le \mathbf{90 \text{ metros}}$$
+$$\text{Patch Cords combinados (Gabinete + Escritorio)} \le \mathbf{10 \text{ metros}}$$
+$$\mathbf{\text{Canal Total (Desde la PC hasta el Switch)}} \le \mathbf{100 \text{ metros}}$$
 
-#### 6. Área de Trabajo (Work Area - WA)
-* **Definición:** Comprende todos los elementos desde la toma de pared hasta el dispositivo del usuario final.
-* **Componentes:**
-  * **Caja superficial o chalupa empotrada:** Montada en la pared o canaleta.
-  * **Faceplate (Placa de pared):** De 1, 2 o 4 puertos.
-  * **Jack RJ-45 hembra (Keystone):** Módulo interno ponchado con la norma T568A o T568B.
-  * **Patch Cord de usuario:** Cable flexible multifilar (*stranded*) de 2 a 3 metros que une el Jack RJ-45 a la tarjeta de red de la PC.
+* **¿Por qué 100 metros y no más?** Porque la electricidad se desgasta conforme viaja por el cobre (**Atenuación**). Si el cable mide 105 o 120 metros, la señal llega tan débil que la tarjeta de red no la entiende o bota la conexión a cada rato.
 
 ---
 
-### 3. Preguntas Clave de Examen (Tipo UMG)
+### 4. ¿Por qué el cable de la pared es diferente al cable de tu escritorio?
 
-**P1: ¿Cuál es la distancia máxima permitida para el enlace permanente en cableado horizontal de cobre?**
-> **R:** **90 metros** de cable sólido (sin incluir los patch cords).
+* **Cable Sólido (Para la pared):** Adentro de cada hilo hay un solo alambre de cobre grueso y duro. Es perfecto para viajar 90 metros sin perder señal, pero si lo doblas muchas veces de un lado a otro como un clip de papel, el alambre se quiebra por dentro. Por eso va escondido y quieto dentro de canaletas.
+* **Cable Multifilar o Stranded (Para los Patch Cords):** Adentro de cada hilo hay decenas de pelitos de cobre delgados retorcidos. Es súper flexible y aguanta que lo pises con las ruedas de tu silla todos los días sin romperse. Pero la señal se gasta más rápido, por eso **solo se usa en cables cortos de 1 a 3 metros**.
 
-**P2: ¿Cuánto mide el canal total permitido por la norma TIA/EIA-568?**
-> **R:** Un máximo absoluto de **100 metros** (90 m de enlace permanente + 10 m combinados de cables de parcheo).
+---
 
-**P3: ¿Qué diferencia física y constructiva existe entre el cable UTP del cableado horizontal y el cable de los Patch Cords?**
-> **R:** El cableado horizontal utiliza conductores de cobre de **núcleo sólido** (rígido, menor atenuación a distancia, diseñado para ponchado en bloques IDC/PunchDown). Los Patch Cords utilizan conductores **multifilares (stranded)** formados por hilos delgados trenzados, lo que les da flexibilidad para soportar movimientos y curvas continuas sin romperse.
+### 5. Preguntas Típicas de Examen
+
+**P1: ¿Cuál es la distancia máxima permitida para el enlace permanente en cableado horizontal?**
+> **R:** Máximo **90 metros** de cable sólido.
+
+**P2: ¿Cuánto mide el canal total de extremo a extremo permitido por la norma TIA-568?**
+> **R:** Máximo **100 metros** (90 m de enlace permanente en pared + 10 m de cables de parcheo).
+
+**P3: ¿Qué diferencia hay entre un cuarto MDF y un cuarto IDF?**
+> **R:** El **MDF** es el cuarto central principal del edificio donde están los servidores y la conexión al exterior. El **IDF** es un cuarto o gabinete secundario ubicado en cada piso para conectar las computadoras de ese nivel hacia el MDF.
